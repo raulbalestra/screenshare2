@@ -4,8 +4,8 @@ from flask import Flask, render_template, request, redirect, session, url_for
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
-app.secret_key = 'sua_chave_secreta_aqui'
-socketio = SocketIO(app)
+app.secret_key = 'sua_chave_secreta_aqui'  # Substitua por uma chave segura
+socketio = SocketIO(app, logger=True, engineio_logger=True)
 
 # Função para conectar ao banco de dados
 def get_db_connection():
@@ -59,7 +59,7 @@ def login():
         session['localidade'] = localidade
         return redirect(url_for('share_screen', localidade=localidade))
     else:
-        return "Login falhou. Tente novamente."
+        return "Login falhou. Tente novamente. <a href='/'>Voltar</a>"
 
 # Rota para compartilhar a tela
 @app.route('/<localidade>')
@@ -72,10 +72,7 @@ def share_screen(localidade):
 # Rota para visualizar a tela compartilhada
 @app.route('/<localidade>/view')
 def view_screen(localidade):
-    if 'logged_in' in session and session['localidade'] == localidade:
-        return render_template('view_screen.html', localidade=localidade)
-    else:
-        return redirect('/')
+    return render_template('view_screen.html', localidade=localidade)
 
 # WebRTC signaling
 @socketio.on('webrtc_offer')
