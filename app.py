@@ -94,11 +94,6 @@ def logout():
     return redirect('/')
 
 if __name__ == '__main__':
-    create_database()  # Garante que o banco de dados e a tabela users sejam criados
-    # Defina o caminho para os arquivos de certificado SSL/TLS
-    cert_path = '/path/to/fullchain.pem'
-    key_path = '/path/to/privkey.pem'
-    ssl_context = (cert_path, key_path)
-
-    # Certifique-se de que seu servidor tenha os arquivos de certificado SSL
-    socketio.run(app, host='0.0.0.0', port=443, debug=True, ssl_context=ssl_context)
+    create_database()
+    port = int(os.environ.get("PORT", 5000))  # Use a porta fornecida pelo Render
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)
