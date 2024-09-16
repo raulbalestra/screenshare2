@@ -56,10 +56,10 @@
                     audio: false  // Define como true se quiser compartilhar áudio
                 });
 
-                // Abrir uma nova aba com a URL específica para visualização
-                const viewUrl = `${location.protocol}//${document.domain}:${location.port}/${encodeURIComponent('{{ localidade }}')}/view`;  // URL completa para a visualização
-                window.open(viewUrl, "_blank"); // Abre a nova aba com a URL da visualização
-                
+                // Abre a nova aba com a URL da visualização
+                const viewUrl = `${location.protocol}//${document.domain}:${location.port}/${encodeURIComponent('{{ localidade }}')}/view`;
+                window.open(viewUrl, "_blank");
+
                 // Configuração WebRTC
                 peerConnection = new RTCPeerConnection();
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
