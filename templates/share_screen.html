@@ -3,13 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compartilhar Tela</title>
+    <title>Compartilhar Tela - {{ localidade }}</title>
     <style>
         body {
             font-family: 'Arial', sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
@@ -32,12 +33,12 @@
             background-color: #45a049;
         }
     </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 </head>
 <body>
     <div class="container">
-        <h2>Compartilhar Tela para {{ localidade }}</h2>
-        <button id="shareButton" onclick="startScreenShare()">Iniciar Compartilhamento</button>
+        <h2>Compartilhar Tela - {{ localidade }}</h2>
+        <button id="shareButton" onclick="startScreenShare()">Compartilhar Tela</button>
         <button id="logoutButton" onclick="window.location.href='/logout'">Logout</button>
     </div>
 
@@ -48,53 +49,55 @@
 
         async function startScreenShare() {
             try {
-                // Solicitar compartilhamento de tela com opções
                 localStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        cursor: "always"  // Opcional: Mostrar cursor durante o compartilhamento
-                    },
-                    audio: false  // Define como true se quiser compartilhar áudio
+                    video: { cursor: "always" },
+                    audio: false
                 });
 
-                // Abre a nova aba com a URL da visualização
-                const viewUrl = `${location.protocol}//${document.domain}:${location.port}/${encodeURIComponent('{{ localidade }}')}/view`;
-                window.open(viewUrl, "_blank");
-
-                // Configuração WebRTC
                 peerConnection = new RTCPeerConnection();
                 localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
 
-                // Eventos de sinalização ICE
                 peerConnection.onicecandidate = event => {
                     if (event.candidate) {
                         socket.emit('ice_candidate', { candidate: event.candidate });
                     }
                 };
 
-                // Cria oferta SDP e inicia a sinalização
-                const offer = await peerConnection.createOffer();
-                await peerConnection.setLocalDescription(offer);
-                socket.emit('webrtc_offer', { sdp: peerConnection.localDescription });
+                peerConnection.onnegotiationneeded = async () => {
+                    try {
+                        const offer = await peerConnection.createOffer();
+                        await peerConnection.setLocalDescription(offer);
+                        socket.emit('webrtc_offer', { sdp: peerConnection.localDescription });
+                    } catch (error) {
+                        console.error("Erro ao criar oferta: ", error);
+                    }
+                };
 
-                // Esconde o botão de compartilhamento após iniciar
+                const videoElement = document.createElement('video');
+                videoElement.srcObject = localStream;
+                videoElement.autoplay = true;
+                document.body.appendChild(videoElement);
+
                 document.getElementById('shareButton').style.display = 'none';
             } catch (err) {
                 console.error("Erro ao compartilhar a tela: ", err);
             }
         }
 
-        // Recebe a resposta SDP (Answer)
         socket.on('webrtc_answer', async (data) => {
-            const remoteDesc = new RTCSessionDescription(data.sdp);
-            await peerConnection.setRemoteDescription(remoteDesc);
+            try {
+                const remoteDesc = new RTCSessionDescription(data.sdp);
+                await peerConnection.setRemoteDescription(remoteDesc);
+            } catch (error) {
+                console.error("Erro ao definir descrição remota: ", error);
+            }
         });
 
-        // Recebe candidatos ICE
         socket.on('ice_candidate', async (data) => {
             try {
                 await peerConnection.addIceCandidate(data.candidate);
             } catch (e) {
-                console.error('Erro ao adicionar candidato ICE: ', e);
+                console.error("Erro ao adicionar candidato ICE: ", e);
             }
         });
     </script>
