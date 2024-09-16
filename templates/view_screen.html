@@ -1,45 +1,47 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualizar Tela Compartilhada - {{ localidade }}</title>
-    <style>
-        body {
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #000;
-        }
-        video {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-        }
-    </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 </head>
 <body>
-    <video id="remoteVideo" autoplay></video>
+    <h2>Visualizar Tela Compartilhada - {{ localidade }}</h2>
+    <video id="remoteVideo" autoplay style="width: 100%; height: auto;"></video>
 
     <script>
         const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-        const videoElement = document.getElementById('remoteVideo');
 
-        let peerConnection = new RTCPeerConnection();
+        // Configuração do servidor STUN/TURN
+        const configuration = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' }, // STUN server público
+                {
+                    urls: 'turn:turn.seuservidor.com:3478', // Substitua pelo seu servidor TURN
+                    username: 'seu-usuario',
+                    credential: 'sua-senha'
+                }
+            ]
+        };
 
+        let peerConnection = new RTCPeerConnection(configuration);
+        
         peerConnection.ontrack = (event) => {
-            videoElement.srcObject = event.streams[0];
+            const remoteVideo = document.getElementById('remoteVideo');
+            if (remoteVideo.srcObject !== event.streams[0]) {
+                remoteVideo.srcObject = event.streams[0];
+            }
+        };
+
+        peerConnection.onicecandidate = event => {
+            if (event.candidate) {
+                socket.emit('ice_candidate', { candidate: event.candidate });
+            }
         };
 
         socket.on('webrtc_offer', async (data) => {
             try {
                 const remoteDesc = new RTCSessionDescription(data.sdp);
                 await peerConnection.setRemoteDescription(remoteDesc);
-
-                peerConnection.addTransceiver('video', { direction: 'recvonly' });
 
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
@@ -49,11 +51,11 @@
             }
         });
 
-        socket.on('ice_candidate', (data) => {
+        socket.on('ice_candidate', async (data) => {
             try {
-                peerConnection.addIceCandidate(data.candidate);
+                await peerConnection.addIceCandidate(data.candidate);
             } catch (e) {
-                console.error('Erro ao adicionar candidato ICE: ', e);
+                console.error("Erro ao adicionar candidato ICE: ", e);
             }
         });
     </script>
