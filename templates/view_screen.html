@@ -30,21 +30,26 @@
 
         let peerConnection = new RTCPeerConnection();
 
+        // Adiciona o evento ontrack para exibir o vídeo recebido
         peerConnection.ontrack = (event) => {
             videoElement.srcObject = event.streams[0];
         };
 
+        // Ao receber a oferta SDP (Offer)
         socket.on('webrtc_offer', async (data) => {
             const remoteDesc = new RTCSessionDescription(data.sdp);
             await peerConnection.setRemoteDescription(remoteDesc);
 
+            // Adiciona um transceptor para receber o vídeo
             peerConnection.addTransceiver('video', { direction: 'recvonly' });
 
+            // Cria uma resposta SDP (Answer) e envia de volta ao remetente
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
             socket.emit('webrtc_answer', { sdp: peerConnection.localDescription });
         });
 
+        // Ao receber candidatos ICE
         socket.on('ice_candidate', (data) => {
             peerConnection.addIceCandidate(data.candidate);
         });
