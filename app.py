@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, redirect, session, url_for
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
-app.secret_key = 'sua_chave_secreta_aqui'  # Substitua por uma chave segura
+app.secret_key = 'sua_chave_secreta_aqui'
 socketio = SocketIO(app, logger=True, engineio_logger=True)
 
 # Função para conectar ao banco de dados
@@ -59,7 +59,7 @@ def login():
         session['localidade'] = localidade
         return redirect(url_for('share_screen', localidade=localidade))
     else:
-        return "Login falhou. Tente novamente. <a href='/'>Voltar</a>"
+        return "Login falhou. Tente novamente."
 
 # Rota para compartilhar a tela
 @app.route('/<localidade>')
@@ -95,4 +95,10 @@ def logout():
 
 if __name__ == '__main__':
     create_database()  # Garante que o banco de dados e a tabela users sejam criados
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+    # Defina o caminho para os arquivos de certificado SSL/TLS
+    cert_path = '/path/to/fullchain.pem'
+    key_path = '/path/to/privkey.pem'
+    ssl_context = (cert_path, key_path)
+
+    # Certifique-se de que seu servidor tenha os arquivos de certificado SSL
+    socketio.run(app, host='0.0.0.0', port=443, debug=True, ssl_context=ssl_context)
