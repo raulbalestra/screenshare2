@@ -57,14 +57,8 @@
                 });
 
                 // Abrir uma nova aba com a URL específica para visualização
-                const viewUrl = `/${encodeURIComponent('{{ localidade }}')}/view`;  // Montando a URL dinâmica
-                const newWindow = window.open(viewUrl, "_blank"); // Abre a nova aba com a URL da visualização
-
-                // Injetar o stream de vídeo na nova aba
-                newWindow.onload = () => {
-                    const videoElement = newWindow.document.getElementById('remoteVideo'); // ID do elemento na view_screen.html
-                    videoElement.srcObject = localStream;
-                };
+                const viewUrl = `${location.protocol}//${document.domain}:${location.port}/${encodeURIComponent('{{ localidade }}')}/view`;  // URL completa para a visualização
+                window.open(viewUrl, "_blank"); // Abre a nova aba com a URL da visualização
                 
                 // Configuração WebRTC
                 peerConnection = new RTCPeerConnection();
