@@ -1,81 +1,89 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Compartilhar Tela - {{ localidade }}</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Compartilhar Tela</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        .container {
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        video {
+            max-width: 100%;
+            max-height: 80vh;
+            display: none; /* Inicialmente escondido */
+        }
+    </style>
 </head>
 <body>
-    <h2>Compartilhar Tela - {{ localidade }}</h2>
-    <button id="shareButton" onclick="startScreenShare()">Compartilhar Tela</button>
-    <button id="logoutButton" onclick="window.location.href='/logout'">Logout</button>
+    <div class="container">
+        <h2>Compartilhar Tela para {{ localidade }}</h2>
+        <button id="shareButton" onclick="startScreenShare()">Iniciar Compartilhamento</button>
+        <button id="logoutButton" onclick="window.location.href='/logout'">Logout</button>
+        <video id="screenVideo" autoplay muted></video> <!-- Elemento de vídeo para exibir a tela compartilhada -->
+    </div>
 
     <script>
-        const socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-        let localStream;
-        let peerConnection;
+        let screenStream;
 
         async function startScreenShare() {
             try {
-                localStream = await navigator.mediaDevices.getDisplayMedia({
+                // Solicitar compartilhamento de tela com opções
+                screenStream = await navigator.mediaDevices.getDisplayMedia({
                     video: {
-                        cursor: "always"
+                        cursor: "always"  // Mostrar cursor durante o compartilhamento
                     },
-                    audio: false
+                    audio: false  // Defina como true se quiser compartilhar áudio
                 });
 
-                const config = {
-                    iceServers: [
-                        { urls: 'stun:stun.l.google.com:19302' }, // Servidor STUN
-                        { urls: 'turn:numb.viagenie.ca', credential: 'contrasenha', username: 'usuário@email.com' } // Servidor TURN
-                    ]
-                };
+                // Exibir o vídeo localmente
+                const videoElement = document.getElementById('screenVideo');
+                videoElement.srcObject = screenStream;
+                videoElement.style.display = 'block';
 
-                peerConnection = new RTCPeerConnection(config);
-                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-                peerConnection.onicecandidate = event => {
-                    if (event.candidate) {
-                        socket.emit('ice_candidate', { candidate: event.candidate });
-                    }
-                };
-
-                peerConnection.onnegotiationneeded = async () => {
-                    try {
-                        const offer = await peerConnection.createOffer();
-                        await peerConnection.setLocalDescription(offer);
-                        socket.emit('webrtc_offer', { sdp: peerConnection.localDescription });
-                    } catch (error) {
-                        console.error("Erro ao criar oferta: ", error);
-                    }
-                };
-
-                const videoElement = document.createElement('video');
-                videoElement.srcObject = localStream;
-                videoElement.autoplay = true;
-                document.body.appendChild(videoElement);
-
+                // Esconder o botão de compartilhamento após iniciar
                 document.getElementById('shareButton').style.display = 'none';
+
+                // Transmitir o vídeo para a rede
+                const socket = new WebSocket(`ws://${window.location.host}/ws`);
+                socket.onopen = () => {
+                    const stream = screenStream.getTracks()[0];
+                    const mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorder.start(1000);
+
+                    mediaRecorder.ondataavailable = event => {
+                        if (event.data.size > 0) {
+                            socket.send(event.data);
+                        }
+                    };
+                };
             } catch (err) {
                 console.error("Erro ao compartilhar a tela: ", err);
             }
         }
-
-        socket.on('webrtc_answer', async (data) => {
-            try {
-                const remoteDesc = new RTCSessionDescription(data.sdp);
-                await peerConnection.setRemoteDescription(remoteDesc);
-            } catch (error) {
-                console.error("Erro ao definir descrição remota: ", error);
-            }
-        });
-
-        socket.on('ice_candidate', async (data) => {
-            try {
-                await peerConnection.addIceCandidate(data.candidate);
-            } catch (e) {
-                console.error("Erro ao adicionar candidato ICE: ", e);
-            }
-        });
     </script>
 </body>
 </html>
