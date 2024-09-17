@@ -1,4 +1,4 @@
 Flask==3.0.3
 flask-sock==0.5.1
-pyscreenshot==2.4
+pyscreenshot==3.1
 Pillow==9.3.0
