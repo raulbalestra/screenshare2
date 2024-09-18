@@ -1,11 +1,13 @@
 import os
 import sqlite3
-import pyscreenshot
-from flask import Flask, render_template, request, redirect, session, url_for, send_file
+from flask import Flask, render_template, request, redirect, session, url_for, send_file, jsonify
 from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = 'sua_chave_secreta_aqui'
+
+# Caminho para salvar a imagem do frame
+frame_path = 'current_frame.png'
 
 # Função para conectar ao banco de dados
 def get_db_connection():
@@ -68,14 +70,31 @@ def logout():
     session.clear()
     return redirect(url_for('index'))
 
-# Rota para capturar e servir a imagem da tela usando `pyscreenshot`
+# Rota para receber os frames da aba selecionada
+@app.route('/upload_frame', methods=['POST'])
+def upload_frame():
+    if 'frame' in request.files:
+        frame = request.files['frame']
+        try:
+            # Salva a imagem recebida como 'current_frame.png'
+            frame.save(frame_path)
+            print('Frame recebido e salvo com sucesso.')
+        except Exception as e:
+            print(f'Erro ao salvar o frame: {e}')
+            return '', 500
+    else:
+        print('Nenhum frame recebido.')
+    return '', 204
+
+# Rota para servir a imagem mais recente
 @app.route('/screen.png')
 def serve_pil_image():
-    img_buffer = BytesIO()
-    # Captura a tela usando pyscreenshot
-    pyscreenshot.grab().save(img_buffer, 'PNG', quality=50)
-    img_buffer.seek(0)
-    return send_file(img_buffer, mimetype='image/png')
+    if os.path.exists(frame_path):
+        print('Servindo a imagem mais recente.')
+        return send_file(frame_path, mimetype='image/png')
+    else:
+        print('Arquivo de imagem não encontrado.')
+        return '', 404
 
 # Rota pública para visualizar a tela (acessível externamente)
 @app.route('/view_screen')
