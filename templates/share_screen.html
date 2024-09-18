@@ -3,126 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compartilhar Tela</title>
+    <title>Visualizar Tela Compartilhada</title>
+    <script>
+        function fetchImage() {
+            setInterval(() => {
+                const url = "/screen.png?random=" + new Date().getTime();
+                const imgElement = document.getElementById('screen');
+                imgElement.src = url;
+            }, 1000); // Atualiza a cada segundo
+        }
+
+        document.addEventListener("DOMContentLoaded", fetchImage);
+    </script>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
             margin: 0;
-            padding: 0;
-            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
+            height: 100vh;
+            background-color: #000;
         }
 
-        .container {
-            background-color: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            width: 800px;
-        }
-
-        h2 {
-            margin-bottom: 20px;
-            color: #333;
-        }
-
-        button {
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 5px;
-            margin: 10px;
-        }
-
-        button:hover {
-            background-color: #45a049;
-        }
-
-        #logoutButton {
-            background-color: #f44336;
-        }
-
-        #logoutButton:hover {
-            background-color: #d32f2f;
-        }
-
-        video {
+        img {
             width: 100%;
-            height: auto;
-            border-radius: 10px;
-            margin-top: 20px;
+            height: 100%;
+            object-fit: contain;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Compartilhar Tela para {{ localidade.capitalize() }}</h2>
-        <button onclick="startScreenShare()">Iniciar Compartilhamento</button>
-        <button id="logoutButton" onclick="logout()">Logout</button>
-        <video id="screenVideo" autoplay></video>
-    </div>
-
-    <script>
-        // Função de compartilhamento de tela
-        async function startScreenShare() {
-            try {
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                const videoElement = document.getElementById('screenVideo');
-                videoElement.srcObject = screenStream;
-
-                // Abre uma nova aba e exibe a tela capturada em modo tela cheia
-                const newWindow = window.open("", "_blank", "fullscreen=yes");
-                const videoElem = newWindow.document.createElement('video');
-                videoElem.srcObject = screenStream;
-                videoElem.autoplay = true;
-                newWindow.document.body.appendChild(videoElem);
-                newWindow.document.body.style.margin = '0';
-                newWindow.document.body.style.overflow = 'hidden';
-                newWindow.document.body.requestFullscreen();
-
-                // Captura e envia a tela a cada 2 segundos
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-                setInterval(() => {
-                    canvas.width = videoElem.videoWidth;
-                    canvas.height = videoElem.videoHeight;
-                    ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
-                    const imgData = canvas.toDataURL('image/png');
-                    sendToServer(imgData);
-                }, 2000); // Envia a cada 2 segundos
-                
-            } catch (err) {
-                console.error("Erro ao compartilhar a tela: ", err);
-            }
-        }
-
-        // Função para enviar a captura de tela para a URL fixa
-        function sendToServer(imgData) {
-            const userUrl = "{{ user_url }}";
-            
-            fetch(userUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ image: imgData })
-            })
-            .then(response => response.json())
-            .then(data => console.log('Tela enviada com sucesso', data))
-            .catch(error => console.error('Erro ao enviar a tela', error));
-        }
-
-        // Função de logout
-        function logout() {
-            window.location.href = '/logout'; // Redireciona para a rota de logout
-        }
-    </script>
+    <img id="screen">
 </body>
 </html>
