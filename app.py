@@ -45,6 +45,29 @@ def check_login(username, password):
         return user['localidade'], user['is_admin']  # Retorna a localidade e se é admin
     return None, None
 
+# Rota para login
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form['username']
+    password = request.form['password']
+    localidade, is_admin = check_login(username, password)
+    if localidade:
+        session['logged_in'] = True
+        session['username'] = username
+        session['localidade'] = localidade
+        session['is_admin'] = is_admin
+        if is_admin:
+            return redirect(url_for('admin_dashboard'))
+        else:
+            return redirect(url_for('share_screen'))
+    return redirect(url_for('index'))
+
+# Rota para logout
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+
 # Rota para capturar e servir a imagem da tela usando `pyscreenshot`
 @app.route('/screen.png')
 def serve_pil_image():
@@ -66,8 +89,6 @@ def share_screen():
         return render_template('share_screen.html', localidade=session['localidade'])
     return redirect(url_for('index'))
 
-# Outras funções de gerenciamento de usuários...
-
 # Página de login
 @app.route('/')
 def index():
@@ -76,6 +97,13 @@ def index():
             return redirect(url_for('admin_dashboard'))
         return redirect(url_for('share_screen'))
     return render_template('login.html')
+
+# Rota para o painel do administrador (apenas como exemplo)
+@app.route('/admin_dashboard')
+def admin_dashboard():
+    if 'logged_in' in session and session['is_admin']:
+        return render_template('admin_dashboard.html')
+    return redirect(url_for('index'))
 
 # Criação do banco de dados ao iniciar
 create_database()
