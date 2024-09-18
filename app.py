@@ -1,6 +1,6 @@
 import os
 import sqlite3
-from flask import Flask, render_template, request, redirect, session, url_for, send_file, jsonify
+from flask import Flask, render_template, request, redirect, session, url_for, send_file
 from io import BytesIO
 
 app = Flask(__name__)
@@ -99,7 +99,9 @@ def serve_pil_image():
 # Rota pública para visualizar a tela (acessível externamente)
 @app.route('/view_screen')
 def view_screen():
-    return render_template('view_screen.html')
+    if 'logged_in' in session:
+        return render_template('view_screen.html')
+    return redirect(url_for('index'))
 
 # Rota para renderizar a página de compartilhamento de tela
 @app.route('/share_screen')
