@@ -10,16 +10,19 @@ from flask import (
     redirect,
     session,
     url_for,
-    send_file,
     make_response,
 )
+from flask_socketio import SocketIO, emit
+from PIL import Image
+import base64
 
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
+socketio = SocketIO(app)
 
 # Configuração do Redis usando a URL fornecida
 redis_url = os.getenv('REDIS_URL', 'redis://red-crm4cde8ii6s738s0acg:6379')
-redis_client = redis.Redis.from_url(redis_url)
+redis_client = redis.Redis.from_url(redis_url, max_connections=100)
 
 # Função para conectar ao banco de dados
 def get_db_connection():
@@ -65,6 +68,14 @@ def check_login(username, password):
         return user["localidade"], user["is_admin"]  # Retorna a localidade e se é admin
     return None, None
 
+# Função para comprimir o frame
+def compress_frame(frame_data):
+    image = Image.open(io.BytesIO(frame_data))
+    output = io.BytesIO()
+    # Compressão com qualidade 50% para reduzir o tamanho
+    image.save(output, format='JPEG', quality=50)
+    return output.getvalue()
+
 # Função para armazenar frame no Redis com expiração de 2 segundos
 def save_frame_to_cache(localidade, frame_data):
     redis_client.setex(f'frame:{localidade}', 2, frame_data)  # Expira após 2 segundos
@@ -100,7 +111,9 @@ def upload_frame(localidade):
             frame = request.files["frame"]
             try:
                 frame_data = frame.read()
-                save_frame_to_cache(localidade, frame_data)
+                compressed_frame = compress_frame(frame_data)  # Comprimir o frame
+                save_frame_to_cache(localidade, compressed_frame)
+                broadcast_frame(localidade, compressed_frame)  # Enviar via WebSocket
                 print(f"Frame recebido e salvo no cache para {localidade}.")
             except Exception as e:
                 print(f"Erro ao salvar o frame no cache: {e}")
@@ -110,41 +123,28 @@ def upload_frame(localidade):
         return "", 204
     return redirect(url_for("index"))
 
-# Rota para servir o frame
-@app.route("/<localidade>/screen.png")
-def serve_pil_image(localidade):
-    if "logged_in" in session and session.get("localidade") == localidade:
-        frame_data = get_frame_from_cache(localidade)
-        if frame_data:
-            return make_response(frame_data, 200, {'Content-Type': 'image/png'})
-        else:
-            return "Frame não encontrado.", 404
-    return redirect(url_for("index"))
+# Função para enviar frame via WebSocket
+def broadcast_frame(localidade, frame_data):
+    # Codificar o frame em base64 para envio via WebSocket
+    frame_b64 = base64.b64encode(frame_data).decode('utf-8')
+    socketio.emit('frame_update', {'localidade': localidade, 'frame': frame_b64}, broadcast=True)
+
+# Evento WebSocket para atualizar o frame no cliente
+@socketio.on('connect')
+def handle_connect():
+    emit('connect', {'message': 'Conectado ao servidor WebSocket'})
 
 # Rota para compartilhar tela com nome de usuário na URL
 @app.route("/<username>/compartilhar-tela")
 def compartilhar_tela(username):
     if "logged_in" in session and session.get("username") == username:
         localidade = session.get("localidade")
-        # Gera o link para visualizar a tela do usuário, incluindo o username na URL
-        share_link = url_for("view_screen_by_region", username=username, _external=True)
         return render_template(
             "tela-compartilhada.html",
             localidade=localidade,
             username=username,
-            share_link=share_link,
         )
     return redirect(url_for("index"))
-
-# Rota para visualizar a tela compartilhada pelo usuário
-@app.route("/<username>/tela", endpoint="view_screen_by_region")
-def view_screen_by_region(username):
-    if "logged_in" in session and session.get("username") == username:
-        localidade = session["localidade"]
-        # Renderiza o template de visualização da tela
-        return render_template("tela.html", regiao=localidade, username=username)
-    else:
-        return redirect(url_for("index"))
 
 # Página de login
 @app.route("/")
@@ -162,90 +162,7 @@ def admin_dashboard():
         return render_template("admin.html")
     return redirect(url_for("index"))
 
-# Rota para trocar senha
-@app.route("/change_password", methods=["GET", "POST"])
-def change_password():
-    if request.method == "POST":
-        username = request.form["username"]
-        new_password = request.form["new_password"]
-        conn = get_db_connection()
-        user = conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
-        conn.close()
-
-        if user:
-            update_password(username, new_password)
-            return redirect("/")
-        else:
-            return "Usuário não encontrado."
-
-    return render_template("change_password.html")
-
-# Rota para adicionar novos usuários
-@app.route("/admin/add_user", methods=["GET", "POST"])
-def add_new_user():
-    if "logged_in" in session and session["is_admin"]:
-        if request.method == "POST":
-            username = request.form["username"]
-            password = request.form["password"]
-            localidade = request.form["localidade"]
-            if add_user(username, password, localidade):
-                flash(
-                    "Usuário adicionado com sucesso!", "success"
-                )  # Mensagem de sucesso
-            else:
-                flash("Erro: Nome de usuário já existe!", "error")  # Mensagem de erro
-            return redirect(
-                url_for("admin_dashboard")
-            )  # Redireciona para a página do admin
-        return render_template("add_user.html")
-
-# Rota para gerenciar usuários
-@app.route("/admin/manage_users")
-def manage_users():
-    if "logged_in" in session and session["is_admin"]:
-        conn = get_db_connection()
-        users = conn.execute(
-            "SELECT * FROM users"
-        ).fetchall()  # Busca todos os usuários
-        conn.close()
-        return render_template("manage_users.html", users=users)
-    else:
-        return redirect(url_for("index"))
-
-# Rota para deletar usuário
-@app.route("/admin/delete_user/<int:user_id>", methods=["POST"])
-def delete_user(user_id):
-    if "logged_in" in session and session["is_admin"]:
-        conn = get_db_connection()
-        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
-        conn.commit()
-        conn.close()
-        flash("Usuário excluído com sucesso!", "success")
-        return redirect(url_for("manage_users"))
-    else:
-        return redirect(url_for("index"))
-
-# Função para atualizar a senha e exibir a nova senha
-def update_password(username, new_password):
-    conn = get_db_connection()
-    conn.execute(
-        "UPDATE users SET password = ? WHERE username = ?", (new_password, username)
-    )
-    conn.commit()
-
-    # Verificando se a senha foi atualizada
-    user = conn.execute(
-        "SELECT password FROM users WHERE username = ?", (username,)
-    ).fetchone()
-    conn.close()
-
-    if user:
-        updated_password = user["password"]
-        print(f"A nova senha de {username} é: {updated_password}")
-
-# Rota para adicionar usuários no banco de dados
+# Função para adicionar usuários no banco de dados
 def add_user(username, password, localidade):
     conn = get_db_connection()
     try:
@@ -278,4 +195,4 @@ create_database()
 
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)
