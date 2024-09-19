@@ -17,8 +17,7 @@ app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
 
 # Configuração do Redis
-redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')  # Pega a URL do Redis da variável de ambiente
-redis_client = redis.StrictRedis.from_url(redis_url)  # Conecta ao Redis usando a URL
+redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 # Função para conectar ao banco de dados
 def get_db_connection():
@@ -120,13 +119,19 @@ def upload_frame(localidade):
             frame = request.files["frame"]
             try:
                 # Salva a imagem no Redis
-                redis_client.set(f"{localidade}_frame", frame.read())
-                print(f"Frame para {localidade} recebido e salvo com sucesso no Redis.")
+                frame_data = frame.read()
+                if frame_data:
+                    redis_client.set(f"{localidade}_frame", frame_data)
+                    print(f"Frame para {localidade} recebido e salvo com sucesso no Redis.")
+                else:
+                    print(f"Frame para {localidade} está vazio.")
+                    return "Frame está vazio.", 500
             except Exception as e:
                 print(f"Erro ao salvar o frame para {localidade}: {e}")
                 return "", 500
         else:
             print("Nenhum frame recebido.")
+            return "Nenhum frame recebido.", 400
         return "", 204
     else:
         return "Acesso negado.", 403
@@ -139,8 +144,8 @@ def serve_pil_image(localidade):
         print(f"Servindo a imagem mais recente para {localidade}.")
         return send_file(BytesIO(frame_data), mimetype="image/png")
     else:
-        print(f"Frame não encontrado para {localidade}.")
-        return "", 404
+        print(f"Frame não encontrado ou está vazio para {localidade}.")
+        return "Frame não encontrado ou está vazio.", 404
 
 @app.route("/<localidade>/view_screen")
 def view_screen_by_region(localidade):
