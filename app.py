@@ -2,9 +2,9 @@ import os
 import io
 import redis
 import sqlite3
-import flask
 from flask import (
     Flask,
+    flash,
     render_template,
     request,
     redirect,
@@ -146,6 +146,19 @@ def login():
             return redirect(url_for("compartilhar_tela", username=username))
     return redirect(url_for("index"))
 
+# Rota para logout
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("index"))
+
+# Rota para compartilhar tela
+@app.route("/<username>/compartilhar-tela")
+def compartilhar_tela(username):
+    if "logged_in" in session and session.get("username") == username:
+        return render_template("tela-compartilhada.html", username=username)
+    return redirect(url_for("index"))
+
 # Página inicial
 @app.route("/")
 def index():
@@ -154,6 +167,23 @@ def index():
             return redirect(url_for("admin_dashboard"))
         return redirect(url_for("compartilhar_tela", username=session["username"]))
     return render_template("login.html")
+
+# Rota para o painel do administrador
+@app.route("/admin_dashboard")
+def admin_dashboard():
+    if "logged_in" in session and session["is_admin"]:
+        return render_template("admin.html")
+    return redirect(url_for("index"))
+
+# Rota de erro 404
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template("404.html"), 404
+
+# Rota de erro 500
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template("500.html"), 500
 
 # Criação do banco de dados ao iniciar
 create_database()
