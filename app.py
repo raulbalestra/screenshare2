@@ -152,7 +152,7 @@ def serve_pil_image(localidade):
 @app.route("/<localidade>/tela")
 def view_screen_by_region(localidade):
     if "logged_in" in session and session.get("localidade") == localidade:
-        return render_template("view_screen.html", regiao=localidade)
+        return render_template("tela.html", regiao=localidade)
     else:
         return redirect(
             url_for("index")
@@ -163,7 +163,7 @@ def view_screen_by_region(localidade):
 @app.route("/<localidade>/compartilhar-tela")
 def compartilhar_tela(localidade):
     if "logged_in" in session and session.get("localidade") == localidade:
-        return render_template("share_screen.html", localidade=session["localidade"])
+        return render_template("compartilhar-tela.html", localidade=session["localidade"])
     return redirect(url_for("index"))
 
 
