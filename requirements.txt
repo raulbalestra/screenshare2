@@ -15,4 +15,5 @@ Werkzeug==3.0.4
 wsproto==1.2.0
 gunicorn
 redis
-PIL
+Pillow
+
