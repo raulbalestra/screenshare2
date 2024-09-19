@@ -45,7 +45,7 @@ def create_database():
             localidade TEXT NOT NULL,
             is_admin INTEGER DEFAULT 0
         )
-        """
+    """
     )
     cursor.execute(
         """
@@ -54,7 +54,7 @@ def create_database():
         ('curitiba_user', 'senha_curitiba', 'curitiba', 0),
         ('sp_user', 'senha_sp', 'sp', 0),
         ('admin', 'admin', 'admin', 1)
-        """
+    """
     )
     conn.commit()
     conn.close()
@@ -97,9 +97,7 @@ def broadcast_frame(frame_data):
 # Rota para capturar a tela e servir como imagem estática via URL
 @app.route('/screen.png')
 def serve_pil_image():
-    frame_data = redis_client.get('screen_frame')  # Recupera o frame do Redis
-    if not frame_data:
-        frame_data = capture_screen()  # Captura a tela se não houver no cache
+    frame_data = capture_screen()  # Captura a tela
     if frame_data:
         return send_file(BytesIO(frame_data), mimetype='image/png')
     else:
@@ -123,19 +121,13 @@ def periodic_broadcast():
 def start_broadcast():
     socketio.start_background_task(target=periodic_broadcast)
 
-# Rota para visualizar a tela capturada (acesso público, sem login)
-@app.route('/tela')
-def view_screen():
-    return render_template("tela.html")
-
-# Página inicial
-@app.route("/")
-def index():
-    if "logged_in" in session:
-        if session["is_admin"]:
-            return redirect(url_for("admin_dashboard"))
-        return redirect(url_for("compartilhar_tela", username=session["username"]))
-    return render_template("login.html")
+# Rota para visualizar a tela capturada
+@app.route('/<username>/tela')
+def view_screen(username):
+    if "logged_in" in session and session.get("username") == username:
+        return render_template("tela.html", username=username)
+    else:
+        return redirect(url_for("index"))
 
 # Rota para login
 @app.route("/login", methods=["POST"])
@@ -166,6 +158,15 @@ def compartilhar_tela(username):
     if "logged_in" in session and session.get("username") == username:
         return render_template("tela-compartilhada.html", username=username)
     return redirect(url_for("index"))
+
+# Página inicial
+@app.route("/")
+def index():
+    if "logged_in" in session:
+        if session["is_admin"]:
+            return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("compartilhar_tela", username=session["username"]))
+    return render_template("login.html")
 
 # Rota para o painel do administrador
 @app.route("/admin_dashboard")
