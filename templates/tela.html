@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualizar Tela Compartilhada - {{ regiao }}</title>
+    <title>Visualizar Tela Compartilhada</title>
     <style>
         body {
             margin: 0;
@@ -25,7 +25,7 @@
 
 <body>
     <!-- Imagem da tela compartilhada -->
-    <img id="screen" src="/{{ regiao }}/screen.png" alt="Tela compartilhada">
+    <img id="screen" src="/screen.png" alt="Tela compartilhada">
 
     <!-- Script para receber e atualizar a imagem em tempo real via WebSocket -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
@@ -44,7 +44,7 @@
             setInterval(() => {
                 // Atualiza a imagem e adiciona um timestamp para evitar cache
                 const timestamp = new Date().getTime();
-                imgElement.src = `/{{ regiao }}/screen.png?timestamp=${timestamp}`;
+                imgElement.src = `/screen.png?timestamp=${timestamp}`;
             }, 1000); // Atualiza a cada 1 segundo como fallback
         }
 
