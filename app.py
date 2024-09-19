@@ -76,13 +76,13 @@ def compress_frame(frame_data):
     image.save(output, format='JPEG', quality=50)
     return output.getvalue()
 
-# Função para armazenar frame no Redis com expiração de 2 segundos
-def save_frame_to_cache(localidade, frame_data):
-    redis_client.setex(f'frame:{localidade}', 2, frame_data)  # Expira após 2 segundos
+# Função para armazenar frame no Redis com expiração de 2 segundos, usando username como chave
+def save_frame_to_cache(username, frame_data):
+    redis_client.setex(f'frame:{username}', 2, frame_data)  # Expira após 2 segundos
 
-# Função para recuperar frame do Redis
-def get_frame_from_cache(localidade):
-    return redis_client.get(f'frame:{localidade}')
+# Função para recuperar frame do Redis, usando username como chave
+def get_frame_from_cache(username):
+    return redis_client.get(f'frame:{username}')
 
 # Rota para login
 @app.route("/login", methods=["POST"])
@@ -104,17 +104,17 @@ def login():
     return redirect(url_for("index"))
 
 # Rota para receber os frames da aba selecionada
-@app.route("/<localidade>/upload_frame", methods=["POST"])
-def upload_frame(localidade):
-    if "logged_in" in session and session.get("localidade") == localidade:
+@app.route("/<username>/upload_frame", methods=["POST"])
+def upload_frame(username):
+    if "logged_in" in session and session.get("username") == username:
         if "frame" in request.files:
             frame = request.files["frame"]
             try:
                 frame_data = frame.read()
                 compressed_frame = compress_frame(frame_data)  # Comprimir o frame
-                save_frame_to_cache(localidade, compressed_frame)
-                broadcast_frame(localidade, compressed_frame)  # Enviar via WebSocket
-                print(f"Frame recebido e salvo no cache para {localidade}.")
+                save_frame_to_cache(username, compressed_frame)
+                broadcast_frame(username, compressed_frame)  # Enviar via WebSocket
+                print(f"Frame recebido e salvo no cache para {username}.")
             except Exception as e:
                 print(f"Erro ao salvar o frame no cache: {e}")
                 return "", 500
@@ -123,11 +123,11 @@ def upload_frame(localidade):
         return "", 204
     return redirect(url_for("index"))
 
-# Função para enviar frame via WebSocket
-def broadcast_frame(localidade, frame_data):
+# Função para enviar frame via WebSocket, usando username para distinguir sessões
+def broadcast_frame(username, frame_data):
     # Codificar o frame em base64 para envio via WebSocket
     frame_b64 = base64.b64encode(frame_data).decode('utf-8')
-    socketio.emit('frame_update', {'localidade': localidade, 'frame': frame_b64}, broadcast=True)
+    socketio.emit('frame_update', {'username': username, 'frame': frame_b64}, broadcast=True)
 
 # Evento WebSocket para atualizar o frame no cliente
 @socketio.on('connect')
@@ -138,13 +138,20 @@ def handle_connect():
 @app.route("/<username>/compartilhar-tela")
 def compartilhar_tela(username):
     if "logged_in" in session and session.get("username") == username:
-        localidade = session.get("localidade")
         return render_template(
             "tela-compartilhada.html",
-            localidade=localidade,
             username=username,
         )
     return redirect(url_for("index"))
+
+# Rota para visualizar a tela compartilhada pelo usuário
+@app.route("/<username>/tela")
+def view_screen(username):
+    if "logged_in" in session:
+        # Renderiza o template de visualização da tela compartilhada
+        return render_template("tela.html", username=username)
+    else:
+        return redirect(url_for("index"))
 
 # Página de login
 @app.route("/")
