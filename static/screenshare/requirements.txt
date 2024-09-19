@@ -1,3 +1,0 @@
-pillow==9.0.1
-pyscreenshot==3.0.0
-flask==0.12.2
