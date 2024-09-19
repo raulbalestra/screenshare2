@@ -2,19 +2,21 @@ import os
 import io
 import redis
 import sqlite3
+import flask
 from flask import (
     Flask,
-    flash,
     render_template,
     request,
     redirect,
     session,
     url_for,
-    make_response,
+    send_file,
 )
 from flask_socketio import SocketIO, emit
 from PIL import Image
 import base64
+from io import BytesIO
+import pyscreenshot  # Para capturar a tela
 
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
@@ -68,25 +70,64 @@ def check_login(username, password):
         return user["localidade"], user["is_admin"]
     return None, None
 
-# Função para comprimir o frame
-def compress_frame(frame_data):
+# Função para capturar a tela e salvar no Redis
+def capture_screen():
     try:
-        image = Image.open(io.BytesIO(frame_data))
-        output = io.BytesIO()
-        image.save(output, format='JPEG', quality=80)  # Compressão com qualidade ajustada
-        return output.getvalue()
-    except Exception as e:
-        print(f"Erro ao comprimir o frame: {e}")
+        img_buffer = BytesIO()
+        pyscreenshot.grab().save(img_buffer, 'PNG', quality=50)  # Captura a tela
+        img_buffer.seek(0)
+        frame_data = img_buffer.read()
+
+        # Salva o frame no Redis com expiração de 5 segundos
+        redis_client.setex('screen_frame', 5, frame_data)
         return frame_data
+    except Exception as e:
+        print(f"Erro ao capturar a tela: {e}")
+        return None
 
-# Função para armazenar frame no Redis com expiração de 5 segundos
-def save_frame_to_cache(username, frame_data):
-    redis_client.setex(f'frame:{username}', 5, frame_data)
-    print(f"Frame salvo no Redis para {username}.")
+# Função para transmitir o frame capturado via WebSocket
+def broadcast_frame(frame_data):
+    try:
+        frame_b64 = base64.b64encode(frame_data).decode('utf-8')
+        socketio.emit('frame_update', {'frame': frame_b64}, broadcast=True)
+        print("Frame transmitido via WebSocket.")
+    except Exception as e:
+        print(f"Erro ao transmitir o frame via WebSocket: {e}")
 
-# Função para recuperar frame do Redis
-def get_frame_from_cache(username):
-    return redis_client.get(f'frame:{username}')
+# Rota para capturar a tela e servir como imagem estática via URL
+@app.route('/screen.png')
+def serve_pil_image():
+    frame_data = capture_screen()  # Captura a tela
+    if frame_data:
+        return send_file(BytesIO(frame_data), mimetype='image/png')
+    else:
+        return "Erro ao capturar a tela", 500
+
+# Evento WebSocket para atualizar o frame no cliente
+@socketio.on('connect')
+def handle_connect():
+    emit('connect', {'message': 'Conectado ao servidor WebSocket'})
+
+# Função para enviar o frame periodicamente para os clientes via WebSocket
+def periodic_broadcast():
+    while True:
+        frame_data = capture_screen()
+        if frame_data:
+            broadcast_frame(frame_data)
+        socketio.sleep(1)  # Intervalo de 1 segundo entre transmissões
+
+# Inicia a transmissão periódica quando o servidor é iniciado
+@socketio.on('start_broadcast')
+def start_broadcast():
+    socketio.start_background_task(target=periodic_broadcast)
+
+# Rota para visualizar a tela capturada
+@app.route('/<username>/tela')
+def view_screen(username):
+    if "logged_in" in session and session.get("username") == username:
+        return render_template("tela.html", username=username)
+    else:
+        return redirect(url_for("index"))
 
 # Rota para login
 @app.route("/login", methods=["POST"])
@@ -105,56 +146,7 @@ def login():
             return redirect(url_for("compartilhar_tela", username=username))
     return redirect(url_for("index"))
 
-# Rota para receber os frames da aba selecionada
-@app.route("/<username>/upload_frame", methods=["POST"])
-def upload_frame(username):
-    if "logged_in" in session and session.get("username") == username:
-        if "frame" in request.files:
-            frame = request.files["frame"]
-            try:
-                frame_data = frame.read()
-                compressed_frame = compress_frame(frame_data)
-                save_frame_to_cache(username, compressed_frame)
-                broadcast_frame(username, compressed_frame)
-                print(f"Frame recebido e salvo no cache para {username}.")
-            except Exception as e:
-                print(f"Erro ao salvar o frame no cache: {e}")
-                return "", 500
-        else:
-            print("Nenhum frame recebido.")
-        return "", 204
-    return redirect(url_for("index"))
-
-# Função para enviar frame via WebSocket
-def broadcast_frame(username, frame_data):
-    try:
-        frame_b64 = base64.b64encode(frame_data).decode('utf-8')
-        socketio.emit('frame_update', {'username': username, 'frame': frame_b64}, broadcast=True)
-        print(f"Broadcasting frame for {username}.")
-    except Exception as e:
-        print(f"Erro ao transmitir o frame: {e}")
-
-# Evento WebSocket para conectar
-@socketio.on('connect')
-def handle_connect():
-    emit('connect', {'message': 'Conectado ao servidor WebSocket'})
-
-# Rota para compartilhar tela
-@app.route("/<username>/compartilhar-tela")
-def compartilhar_tela(username):
-    if "logged_in" in session and session.get("username") == username:
-        return render_template("tela-compartilhada.html", username=username)
-    return redirect(url_for("index"))
-
-# Rota para visualizar a tela compartilhada
-@app.route("/<username>/tela")
-def view_screen(username):
-    if "logged_in" in session:
-        return render_template("tela.html", username=username)
-    else:
-        return redirect(url_for("index"))
-
-# Página de login
+# Página inicial
 @app.route("/")
 def index():
     if "logged_in" in session:
@@ -162,13 +154,6 @@ def index():
             return redirect(url_for("admin_dashboard"))
         return redirect(url_for("compartilhar_tela", username=session["username"]))
     return render_template("login.html")
-
-# Rota para o painel do administrador
-@app.route("/admin_dashboard")
-def admin_dashboard():
-    if "logged_in" in session and session["is_admin"]:
-        return render_template("admin.html")
-    return redirect(url_for("index"))
 
 # Criação do banco de dados ao iniciar
 create_database()
