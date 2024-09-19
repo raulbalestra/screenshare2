@@ -1,4 +1,6 @@
 import os
+import io
+import redis
 import sqlite3
 from flask import (
     Flask,
@@ -9,21 +11,21 @@ from flask import (
     session,
     url_for,
     send_file,
+    make_response,
 )
-from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
 
-frame_base_path = "frames"
-
+# Configuração do Redis usando a URL fornecida
+redis_url = os.getenv('REDIS_URL', 'redis://red-crm4cde8ii6s738s0acg:6379')
+redis_client = redis.Redis.from_url(redis_url)
 
 # Função para conectar ao banco de dados
 def get_db_connection():
     conn = sqlite3.connect("users.db")
     conn.row_factory = sqlite3.Row
     return conn
-
 
 # Função para criar o banco de dados
 def create_database():
@@ -52,7 +54,6 @@ def create_database():
     conn.commit()
     conn.close()
 
-
 # Função para validar o login
 def check_login(username, password):
     conn = get_db_connection()
@@ -64,25 +65,13 @@ def check_login(username, password):
         return user["localidade"], user["is_admin"]  # Retorna a localidade e se é admin
     return None, None
 
+# Função para armazenar frame no Redis com expiração de 2 segundos
+def save_frame_to_cache(localidade, frame_data):
+    redis_client.setex(f'frame:{localidade}', 2, frame_data)  # Expira após 2 segundos
 
-# Função para atualizar a senha e exibir a nova senha
-def update_password(username, new_password):
-    conn = get_db_connection()
-    conn.execute(
-        "UPDATE users SET password = ? WHERE username = ?", (new_password, username)
-    )
-    conn.commit()
-
-    # Verificando se a senha foi atualizada
-    user = conn.execute(
-        "SELECT password FROM users WHERE username = ?", (username,)
-    ).fetchone()
-    conn.close()
-
-    if user:
-        updated_password = user["password"]
-        print(f"A nova senha de {username} é: {updated_password}")
-
+# Função para recuperar frame do Redis
+def get_frame_from_cache(localidade):
+    return redis_client.get(f'frame:{localidade}')
 
 # Rota para login
 @app.route("/login", methods=["POST"])
@@ -103,21 +92,6 @@ def login():
 
     return redirect(url_for("index"))
 
-
-def add_user(username, password, localidade):
-    conn = get_db_connection()
-    try:
-        conn.execute(
-            "INSERT INTO users (username, password, localidade) VALUES (?, ?, ?)",
-            (username, password, localidade),
-        )
-        conn.commit()
-    except sqlite3.IntegrityError:
-        return False  # Retorna False se o usuário já existe
-    conn.close()
-    return True
-
-
 # Rota para receber os frames da aba selecionada
 @app.route("/<localidade>/upload_frame", methods=["POST"])
 def upload_frame(localidade):
@@ -125,42 +99,27 @@ def upload_frame(localidade):
         if "frame" in request.files:
             frame = request.files["frame"]
             try:
-                # Salva o frame no caminho específico da localidade
-                frame_path = get_frame_path(localidade)
-                frame.save(frame_path)
-                print(f"Frame recebido e salvo com sucesso para {localidade}.")
+                frame_data = frame.read()
+                save_frame_to_cache(localidade, frame_data)
+                print(f"Frame recebido e salvo no cache para {localidade}.")
             except Exception as e:
-                print(f"Erro ao salvar o frame: {e}")
+                print(f"Erro ao salvar o frame no cache: {e}")
                 return "", 500
         else:
             print("Nenhum frame recebido.")
         return "", 204
     return redirect(url_for("index"))
 
-
-def get_frame_path(localidade):
-    # Caminho base para as pastas de frames
-    frame_base_path = "frames"
-    # Cria o caminho completo para a localidade
-    frame_folder = os.path.join(frame_base_path, localidade)
-    # Certifica que a pasta existe (caso contrário, cria a pasta)
-    os.makedirs(frame_folder, exist_ok=True)
-    # Retorna o caminho completo do frame
-    return os.path.join(frame_folder, "current_frame.png")
-
-
+# Rota para servir o frame
 @app.route("/<localidade>/screen.png")
 def serve_pil_image(localidade):
-    # Verifica se o usuário está logado e na localidade correta
     if "logged_in" in session and session.get("localidade") == localidade:
-        frame_path = get_frame_path(localidade)
-        if os.path.exists(frame_path):
-            # Serve a imagem correta do frame da localidade
-            return send_file(frame_path, mimetype="image/png")
+        frame_data = get_frame_from_cache(localidade)
+        if frame_data:
+            return make_response(frame_data, 200, {'Content-Type': 'image/png'})
         else:
             return "Frame não encontrado.", 404
     return redirect(url_for("index"))
-
 
 # Rota para compartilhar tela com nome de usuário na URL
 @app.route("/<username>/compartilhar-tela")
@@ -177,7 +136,6 @@ def compartilhar_tela(username):
         )
     return redirect(url_for("index"))
 
-
 # Rota para visualizar a tela compartilhada pelo usuário
 @app.route("/<username>/tela", endpoint="view_screen_by_region")
 def view_screen_by_region(username):
@@ -188,16 +146,14 @@ def view_screen_by_region(username):
     else:
         return redirect(url_for("index"))
 
-
 # Página de login
 @app.route("/")
 def index():
     if "logged_in" in session:
         if session["is_admin"]:
             return redirect(url_for("admin_dashboard"))
-        return redirect(url_for("compartilhar-tela", localidade=session["localidade"]))
+        return redirect(url_for("compartilhar_tela", username=session["username"]))
     return render_template("login.html")
-
 
 # Rota para o painel do administrador (apenas como exemplo)
 @app.route("/admin_dashboard")
@@ -205,7 +161,6 @@ def admin_dashboard():
     if "logged_in" in session and session["is_admin"]:
         return render_template("admin.html")
     return redirect(url_for("index"))
-
 
 # Rota para trocar senha
 @app.route("/change_password", methods=["GET", "POST"])
@@ -227,7 +182,6 @@ def change_password():
 
     return render_template("change_password.html")
 
-
 # Rota para adicionar novos usuários
 @app.route("/admin/add_user", methods=["GET", "POST"])
 def add_new_user():
@@ -247,7 +201,6 @@ def add_new_user():
             )  # Redireciona para a página do admin
         return render_template("add_user.html")
 
-
 # Rota para gerenciar usuários
 @app.route("/admin/manage_users")
 def manage_users():
@@ -260,7 +213,6 @@ def manage_users():
         return render_template("manage_users.html", users=users)
     else:
         return redirect(url_for("index"))
-
 
 # Rota para deletar usuário
 @app.route("/admin/delete_user/<int:user_id>", methods=["POST"])
@@ -275,10 +227,37 @@ def delete_user(user_id):
     else:
         return redirect(url_for("index"))
 
+# Função para atualizar a senha e exibir a nova senha
+def update_password(username, new_password):
+    conn = get_db_connection()
+    conn.execute(
+        "UPDATE users SET password = ? WHERE username = ?", (new_password, username)
+    )
+    conn.commit()
 
-# Criação do banco de dados ao iniciar
-create_database()
+    # Verificando se a senha foi atualizada
+    user = conn.execute(
+        "SELECT password FROM users WHERE username = ?", (username,)
+    ).fetchone()
+    conn.close()
 
+    if user:
+        updated_password = user["password"]
+        print(f"A nova senha de {username} é: {updated_password}")
+
+# Rota para adicionar usuários no banco de dados
+def add_user(username, password, localidade):
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            "INSERT INTO users (username, password, localidade) VALUES (?, ?, ?)",
+            (username, password, localidade),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        return False  # Retorna False se o usuário já existe
+    conn.close()
+    return True
 
 # Rota para logout
 @app.route("/logout")
@@ -286,16 +265,16 @@ def logout():
     session.clear()
     return redirect(url_for("index"))
 
-
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template("404.html"), 404
-
 
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template("500.html"), 500
 
+# Criação do banco de dados ao iniciar
+create_database()
 
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
