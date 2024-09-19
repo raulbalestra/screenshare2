@@ -1,4 +1,5 @@
 import os
+import redis  # Biblioteca Redis para Python
 import sqlite3
 from flask import (
     Flask,
@@ -15,13 +16,14 @@ from io import BytesIO
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
 
+# Configuração do Redis
+redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
 
 # Função para conectar ao banco de dados
 def get_db_connection():
     conn = sqlite3.connect("users.db")
     conn.row_factory = sqlite3.Row
     return conn
-
 
 # Função para criar o banco de dados
 def create_database():
@@ -50,7 +52,6 @@ def create_database():
     conn.commit()
     conn.close()
 
-
 # Função para validar o login
 def check_login(username, password):
     conn = get_db_connection()
@@ -61,7 +62,6 @@ def check_login(username, password):
     if user:
         return user["localidade"], user["is_admin"]  # Retorna a localidade e se é admin
     return None, None
-
 
 # Função para atualizar a senha e exibir a nova senha
 def update_password(username, new_password):
@@ -81,7 +81,6 @@ def update_password(username, new_password):
         updated_password = user["password"]
         print(f"A nova senha de {username} é: {updated_password}")
 
-
 # Rota para login
 @app.route("/login", methods=["POST"])
 def login():
@@ -100,7 +99,6 @@ def login():
 
     return redirect(url_for("index"))
 
-
 def add_user(username, password, localidade):
     conn = get_db_connection()
     try:
@@ -114,17 +112,15 @@ def add_user(username, password, localidade):
     conn.close()
     return True
 
-
 @app.route("/upload_frame/<localidade>", methods=["POST"])
 def upload_frame(localidade):
     if "logged_in" in session and session.get("localidade") == localidade:
         if "frame" in request.files:
             frame = request.files["frame"]
             try:
-                # Salva a imagem recebida com base na localidade do usuário
-                frame_path = f"{localidade}_frame.png"
-                frame.save(frame_path)
-                print(f"Frame para {localidade} recebido e salvo com sucesso.")
+                # Salva a imagem no Redis
+                redis_client.set(f"{localidade}_frame", frame.read())
+                print(f"Frame para {localidade} recebido e salvo com sucesso no Redis.")
             except Exception as e:
                 print(f"Erro ao salvar o frame para {localidade}: {e}")
                 return "", 500
@@ -134,31 +130,22 @@ def upload_frame(localidade):
     else:
         return "Acesso negado.", 403
 
-
 @app.route("/<localidade>/screen.png")
 def serve_pil_image(localidade):
-    if "logged_in" in session and session.get("localidade") == localidade:
-        frame_path = f"{localidade}_frame.png"
-        if os.path.exists(frame_path):
-            print(f"Servindo a imagem mais recente para {localidade}.")
-            return send_file(frame_path, mimetype="image/png")
-        else:
-            print(f"Arquivo de imagem não encontrado para {localidade}.")
-            return "", 404
+    # Remove a verificação da sessão para tornar essa rota pública
+    frame_data = redis_client.get(f"{localidade}_frame")
+    if frame_data:
+        print(f"Servindo a imagem mais recente para {localidade}.")
+        return send_file(BytesIO(frame_data), mimetype="image/png")
     else:
-        return "Acesso negado.", 403
-
+        print(f"Frame não encontrado para {localidade}.")
+        return "", 404
 
 @app.route("/<localidade>/view_screen")
 def view_screen_by_region(localidade):
-    if "logged_in" in session and session.get("localidade") == localidade:
-        # Renderiza o template com a variável localidade/região
-        return render_template("view_screen.html", regiao=localidade)
-    else:
-        return redirect(
-            url_for("index")
-        )  # Redireciona se a localidade não estiver correta
-
+    # Remove a verificação da sessão para tornar essa rota pública
+    # Renderiza o template com a variável localidade/região
+    return render_template("view_screen.html", regiao=localidade)
 
 # Rota para renderizar a página de compartilhamento de tela
 @app.route("/<localidade>/share_screen")
@@ -166,7 +153,6 @@ def share_screen(localidade):
     if "logged_in" in session and session.get("localidade") == localidade:
         return render_template("share_screen.html", localidade=session["localidade"])
     return redirect(url_for("index"))
-
 
 # Página de login
 @app.route("/")
@@ -177,14 +163,12 @@ def index():
         return redirect(url_for("share_screen", localidade=session["localidade"]))
     return render_template("login.html")
 
-
 # Rota para o painel do administrador (apenas como exemplo)
 @app.route("/admin_dashboard")
 def admin_dashboard():
     if "logged_in" in session and session["is_admin"]:
         return render_template("admin.html")
     return redirect(url_for("index"))
-
 
 # Rota para trocar senha
 @app.route("/change_password", methods=["GET", "POST"])
@@ -206,7 +190,6 @@ def change_password():
 
     return render_template("change_password.html")
 
-
 @app.route("/admin/add_user", methods=["GET", "POST"])
 def add_new_user():
     if "logged_in" in session and session["is_admin"]:
@@ -225,7 +208,6 @@ def add_new_user():
             )  # Redireciona para a página do admin
         return render_template("add_user.html")
 
-
 @app.route("/admin/manage_users")
 def manage_users():
     if "logged_in" in session and session["is_admin"]:
@@ -237,7 +219,6 @@ def manage_users():
         return render_template("manage_users.html", users=users)
     else:
         return redirect(url_for("index"))
-
 
 @app.route("/admin/delete_user/<int:user_id>", methods=["POST"])
 def delete_user(user_id):
@@ -251,10 +232,8 @@ def delete_user(user_id):
     else:
         return redirect(url_for("index"))
 
-
 # Criação do banco de dados ao iniciar
 create_database()
-
 
 # Rota para logout
 @app.route("/logout")
@@ -262,17 +241,14 @@ def logout():
     session.clear()
     return redirect(url_for("index"))
 
-
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template("404.html"), 404
-
 
 # Exemplo de página de erro 500 (não modificado)
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template("500.html"), 500
-
 
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
