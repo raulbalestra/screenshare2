@@ -51,7 +51,7 @@ def create_database():
         VALUES
         ('curitiba_user', 'senha_curitiba', 'curitiba', 0),
         ('sp_user', 'senha_sp', 'sp', 0),
-        ('admin', 'admin', 'admin', 1)  -- Admin com valor 1
+        ('admin', 'admin', 'admin', 1)
     """
     )
     conn.commit()
@@ -65,22 +65,26 @@ def check_login(username, password):
     ).fetchone()
     conn.close()
     if user:
-        return user["localidade"], user["is_admin"]  # Retorna a localidade e se é admin
+        return user["localidade"], user["is_admin"]
     return None, None
 
 # Função para comprimir o frame
 def compress_frame(frame_data):
-    image = Image.open(io.BytesIO(frame_data))
-    output = io.BytesIO()
-    # Compressão com qualidade 50% para reduzir o tamanho
-    image.save(output, format='JPEG', quality=50)
-    return output.getvalue()
+    try:
+        image = Image.open(io.BytesIO(frame_data))
+        output = io.BytesIO()
+        image.save(output, format='JPEG', quality=80)  # Compressão com qualidade ajustada
+        return output.getvalue()
+    except Exception as e:
+        print(f"Erro ao comprimir o frame: {e}")
+        return frame_data
 
-# Função para armazenar frame no Redis com expiração de 2 segundos, usando username como chave
+# Função para armazenar frame no Redis com expiração de 5 segundos
 def save_frame_to_cache(username, frame_data):
-    redis_client.setex(f'frame:{username}', 2, frame_data)  # Expira após 2 segundos
+    redis_client.setex(f'frame:{username}', 5, frame_data)
+    print(f"Frame salvo no Redis para {username}.")
 
-# Função para recuperar frame do Redis, usando username como chave
+# Função para recuperar frame do Redis
 def get_frame_from_cache(username):
     return redis_client.get(f'frame:{username}')
 
@@ -98,9 +102,7 @@ def login():
         if is_admin:
             return redirect(url_for("admin_dashboard"))
         else:
-            # Redireciona para a rota de compartilhar tela com username
             return redirect(url_for("compartilhar_tela", username=username))
-
     return redirect(url_for("index"))
 
 # Rota para receber os frames da aba selecionada
@@ -111,9 +113,9 @@ def upload_frame(username):
             frame = request.files["frame"]
             try:
                 frame_data = frame.read()
-                compressed_frame = compress_frame(frame_data)  # Comprimir o frame
+                compressed_frame = compress_frame(frame_data)
                 save_frame_to_cache(username, compressed_frame)
-                broadcast_frame(username, compressed_frame)  # Enviar via WebSocket
+                broadcast_frame(username, compressed_frame)
                 print(f"Frame recebido e salvo no cache para {username}.")
             except Exception as e:
                 print(f"Erro ao salvar o frame no cache: {e}")
@@ -123,32 +125,31 @@ def upload_frame(username):
         return "", 204
     return redirect(url_for("index"))
 
-# Função para enviar frame via WebSocket, usando username para distinguir sessões
+# Função para enviar frame via WebSocket
 def broadcast_frame(username, frame_data):
-    # Codificar o frame em base64 para envio via WebSocket
-    frame_b64 = base64.b64encode(frame_data).decode('utf-8')
-    socketio.emit('frame_update', {'username': username, 'frame': frame_b64}, broadcast=True)
+    try:
+        frame_b64 = base64.b64encode(frame_data).decode('utf-8')
+        socketio.emit('frame_update', {'username': username, 'frame': frame_b64}, broadcast=True)
+        print(f"Broadcasting frame for {username}.")
+    except Exception as e:
+        print(f"Erro ao transmitir o frame: {e}")
 
-# Evento WebSocket para atualizar o frame no cliente
+# Evento WebSocket para conectar
 @socketio.on('connect')
 def handle_connect():
     emit('connect', {'message': 'Conectado ao servidor WebSocket'})
 
-# Rota para compartilhar tela com nome de usuário na URL
+# Rota para compartilhar tela
 @app.route("/<username>/compartilhar-tela")
 def compartilhar_tela(username):
     if "logged_in" in session and session.get("username") == username:
-        return render_template(
-            "tela-compartilhada.html",
-            username=username,
-        )
+        return render_template("tela-compartilhada.html", username=username)
     return redirect(url_for("index"))
 
-# Rota para visualizar a tela compartilhada pelo usuário
+# Rota para visualizar a tela compartilhada
 @app.route("/<username>/tela")
 def view_screen(username):
     if "logged_in" in session:
-        # Renderiza o template de visualização da tela compartilhada
         return render_template("tela.html", username=username)
     else:
         return redirect(url_for("index"))
@@ -162,40 +163,12 @@ def index():
         return redirect(url_for("compartilhar_tela", username=session["username"]))
     return render_template("login.html")
 
-# Rota para o painel do administrador (apenas como exemplo)
+# Rota para o painel do administrador
 @app.route("/admin_dashboard")
 def admin_dashboard():
     if "logged_in" in session and session["is_admin"]:
         return render_template("admin.html")
     return redirect(url_for("index"))
-
-# Função para adicionar usuários no banco de dados
-def add_user(username, password, localidade):
-    conn = get_db_connection()
-    try:
-        conn.execute(
-            "INSERT INTO users (username, password, localidade) VALUES (?, ?, ?)",
-            (username, password, localidade),
-        )
-        conn.commit()
-    except sqlite3.IntegrityError:
-        return False  # Retorna False se o usuário já existe
-    conn.close()
-    return True
-
-# Rota para logout
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("index"))
-
-@app.errorhandler(404)
-def page_not_found(e):
-    return render_template("404.html"), 404
-
-@app.errorhandler(500)
-def internal_server_error(e):
-    return render_template("500.html"), 500
 
 # Criação do banco de dados ao iniciar
 create_database()
