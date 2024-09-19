@@ -27,20 +27,28 @@
     <!-- Imagem da tela compartilhada -->
     <img id="screen" src="/{{ regiao }}/screen.png" alt="Tela compartilhada">
 
-
-    <!-- Script para atualizar a imagem a cada 1 segundo -->
+    <!-- Script para receber e atualizar a imagem em tempo real via WebSocket -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <script>
-        function updateScreen() {
+        var socket = io.connect(location.protocol + '//' + location.host);  // Conecta ao WebSocket
+
+        // Função para atualizar o frame via WebSocket
+        socket.on('frame_update', function (data) {
+            var imgElement = document.getElementById('screen');
+            imgElement.src = 'data:image/png;base64,' + data.frame;  // Atualiza a imagem com o frame recebido
+        });
+
+        // Função para atualizar a imagem a cada 1 segundo, caso o WebSocket falhe
+        function updateScreenFallback() {
             const imgElement = document.getElementById('screen');
             setInterval(() => {
                 // Atualiza a imagem e adiciona um timestamp para evitar cache
                 const timestamp = new Date().getTime();
                 imgElement.src = `/{{ regiao }}/screen.png?timestamp=${timestamp}`;
-            }, 1000); // Atualiza a cada 1 segundo
+            }, 1000); // Atualiza a cada 1 segundo como fallback
         }
 
-        document.addEventListener("DOMContentLoaded", updateScreen);
-
+        document.addEventListener("DOMContentLoaded", updateScreenFallback);
     </script>
 </body>
 
