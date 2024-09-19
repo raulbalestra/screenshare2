@@ -14,5 +14,5 @@ simple-websocket==1.0.0
 Werkzeug==3.0.4
 wsproto==1.2.0
 gunicorn
-redis==5.0.10
+redis==5.0.0
 eventlet==0.33.0
