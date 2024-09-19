@@ -1,10 +1,21 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualizar Tela Compartilhada - {{ username }}</title>
+    <title>Visualizar Tela Compartilhada</title>
+    <script>
+        function fetchImage() {
+            setInterval(() => {
+                const url = "/screen.png?random=" + new Date().getTime();
+                const imgElement = document.getElementById('screen');
+                imgElement.src = url;
+            }, 1000); // Atualiza a cada segundo
+        }
+
+        document.addEventListener("DOMContentLoaded", fetchImage);
+    </script>
     <style>
         body {
             margin: 0;
@@ -24,32 +35,7 @@
 </head>
 
 <body>
-    <!-- Imagem da tela compartilhada -->
-    <img id="screen" src="/screen.png" alt="Tela compartilhada">
-
-    <!-- Script para receber e atualizar a imagem em tempo real via WebSocket -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
-    <script>
-        var socket = io.connect(location.protocol + '//' + location.host);  // Conecta ao WebSocket
-
-        // Função para atualizar o frame via WebSocket
-        socket.on('frame_update', function (data) {
-            var imgElement = document.getElementById('screen');
-            imgElement.src = 'data:image/png;base64,' + data.frame;  // Atualiza a imagem com o frame recebido
-        });
-
-        // Função para atualizar a imagem a cada 1 segundo, caso o WebSocket falhe
-        function updateScreenFallback() {
-            const imgElement = document.getElementById('screen');
-            setInterval(() => {
-                // Atualiza a imagem e adiciona um timestamp para evitar cache
-                const timestamp = new Date().getTime();
-                imgElement.src = `/screen.png?timestamp=${timestamp}`;
-            }, 1000); // Atualiza a cada 1 segundo como fallback
-        }
-
-        document.addEventListener("DOMContentLoaded", updateScreenFallback);
-    </script>
+    <img src="/{{ regiao }}/screen.png" alt="Tela compartilhada">
 </body>
 
 </html>
