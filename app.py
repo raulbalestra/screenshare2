@@ -15,9 +15,6 @@ from io import BytesIO
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
 
-# Caminho para salvar a imagem do frame
-frame_path = "current_frame.png"
-
 
 # Função para conectar ao banco de dados
 def get_db_connection():
@@ -101,7 +98,6 @@ def login():
         else:
             return redirect(url_for("share_screen", localidade=localidade))
 
-
     return redirect(url_for("index"))
 
 
@@ -119,40 +115,38 @@ def add_user(username, password, localidade):
     return True
 
 
-# Função para remover um usuário
-def remove_user(username):
-    conn = get_db_connection()
-    conn.execute("DELETE FROM users WHERE username = ?", (username,))
-    conn.commit()
-    conn.close()
-
-
-# Rota para receber os frames da aba selecionada
-@app.route("/upload_frame", methods=["POST"])
-def upload_frame():
-    if "frame" in request.files:
-        frame = request.files["frame"]
-        try:
-            # Salva a imagem recebida como 'current_frame.png'
-            frame.save(frame_path)
-            print("Frame recebido e salvo com sucesso.")
-        except Exception as e:
-            print(f"Erro ao salvar o frame: {e}")
-            return "", 500
+@app.route("/upload_frame/<localidade>", methods=["POST"])
+def upload_frame(localidade):
+    if "logged_in" in session and session.get("localidade") == localidade:
+        if "frame" in request.files:
+            frame = request.files["frame"]
+            try:
+                # Salva a imagem recebida com base na localidade do usuário
+                frame_path = f"{localidade}_frame.png"
+                frame.save(frame_path)
+                print(f"Frame para {localidade} recebido e salvo com sucesso.")
+            except Exception as e:
+                print(f"Erro ao salvar o frame para {localidade}: {e}")
+                return "", 500
+        else:
+            print("Nenhum frame recebido.")
+        return "", 204
     else:
-        print("Nenhum frame recebido.")
-    return "", 204
+        return "Acesso negado.", 403
 
 
-# Rota para servir a imagem mais recente
-@app.route("/screen.png")
-def serve_pil_image():
-    if os.path.exists(frame_path):
-        print("Servindo a imagem mais recente.")
-        return send_file(frame_path, mimetype="image/png")
+@app.route("/<localidade>/screen.png")
+def serve_pil_image(localidade):
+    if "logged_in" in session and session.get("localidade") == localidade:
+        frame_path = f"{localidade}_frame.png"
+        if os.path.exists(frame_path):
+            print(f"Servindo a imagem mais recente para {localidade}.")
+            return send_file(frame_path, mimetype="image/png")
+        else:
+            print(f"Arquivo de imagem não encontrado para {localidade}.")
+            return "", 404
     else:
-        print("Arquivo de imagem não encontrado.")
-        return "", 404
+        return "Acesso negado.", 403
 
 
 @app.route("/<localidade>/view_screen")
@@ -232,19 +226,30 @@ def add_new_user():
         return render_template("add_user.html")
 
 
-@app.route("/admin/remove_user", methods=["GET", "POST"])
-def remove_existing_user():
+@app.route("/admin/manage_users")
+def manage_users():
     if "logged_in" in session and session["is_admin"]:
-        if request.method == "POST":
-            username = request.form["username"]
-            remove_user(username)
-            flash(
-                f"Usuário {username} removido com sucesso!", "success"
-            )  # Mensagem de sucesso
-            return redirect(
-                url_for("admin_dashboard")
-            )  # Redireciona para a página do admin
-        return render_template("remove_user.html")
+        conn = get_db_connection()
+        users = conn.execute(
+            "SELECT * FROM users"
+        ).fetchall()  # Busca todos os usuários
+        conn.close()
+        return render_template("manage_users.html", users=users)
+    else:
+        return redirect(url_for("index"))
+
+
+@app.route("/admin/delete_user/<int:user_id>", methods=["POST"])
+def delete_user(user_id):
+    if "logged_in" in session and session["is_admin"]:
+        conn = get_db_connection()
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+        flash("Usuário excluído com sucesso!", "success")
+        return redirect(url_for("manage_users"))
+    else:
+        return redirect(url_for("index"))
 
 
 # Criação do banco de dados ao iniciar
