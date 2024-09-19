@@ -17,7 +17,8 @@ app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
 
 # Configuração do Redis
-redis_client = redis.StrictRedis(host='localhost', port=6379, db=0)
+redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')  # Pega a URL do Redis da variável de ambiente
+redis_client = redis.StrictRedis.from_url(redis_url)  # Conecta ao Redis usando a URL
 
 # Função para conectar ao banco de dados
 def get_db_connection():
