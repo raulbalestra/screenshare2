@@ -157,6 +157,7 @@
                 document.getElementById('stopButton').disabled = false;
                 // Captura frames da tela e envia para o servidor
                 captureAndSendFrames();
+                window.open(`/{{ localidade }}/view_screen`, "_blank");
             } catch (err) {
                 console.error("Erro ao compartilhar a tela: ", err);
             }
