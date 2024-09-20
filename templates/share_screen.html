@@ -137,13 +137,8 @@
             <button id="shareButton" onclick="startScreenShare()">Iniciar Compartilhamento</button>
             <button id="stopButton" onclick="stopScreenShare()" disabled>Parar Compartilhamento</button>
              <button id="logoutButton" class="logout" onclick="window.location.href='/logout'">Logout</button>
-        </div>
-       <div id="shareModal" class="modal">
-        <div class="modal-content">
-            <input type="text" id="shareLink" value="https://screenshare2-v3.onrender.com/{{ username }}/tela" readonly>
-            <button class="copy-btn" onclick="copyLink()">Copiar Link</button>
-        </div>
-    </div>
+        </div>    
+    </div
     <script>
         let screenStream;
         let captureInterval;
@@ -215,12 +210,6 @@
             console.log('Compartilhamento de tela parado.');
         }
           // Função para copiar o link de compartilhamento
-        function copyLink() {
-            var copyText = document.getElementById("shareLink");
-            copyText.select();
-            document.execCommand("copy");
-            alert("Link copiado: " + copyText.value);
-        }
     </script>
 </body>
 </html>
