@@ -47,6 +47,33 @@ def check_login(username, password):
     if user:
         return user['localidade'], user['is_admin']  # Retorna a localidade e se é admin
     return None, None
+    
+# Function to update password and display the new password
+def update_password(username, new_password):
+    conn = get_db_connection()
+    conn.execute(
+        "UPDATE users SET password = ? WHERE username = ?", (new_password, username)
+    )
+    conn.commit()
+    user = conn.execute(
+        "SELECT password FROM users WHERE username = ?", (username,)
+    ).fetchone()
+    conn.close()
+    if user:
+        updated_password = user["password"]
+        print(f"The new password for {username} is: {updated_password}")
+def add_user(username, password, localidade):
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            "INSERT INTO users (username, password, localidade) VALUES (?, ?, ?)",
+            (username, password, localidade),
+        )
+        conn.commit()
+    except sqlite3.IntegrityError:
+        return False  # Retorna False se o usuário já existe
+    conn.close()
+    return True
 
 # Rota para login
 @app.route('/login', methods=['POST'])
@@ -127,10 +154,75 @@ def admin_dashboard():
     if 'logged_in' in session and session['is_admin']:
         return render_template('admin.html')
     return redirect(url_for('index'))
+    
+@app.route("/admin/manage_users")
+def manage_users():
+    if "logged_in" in session and session["is_admin"]:
+        conn = get_db_connection()
+        users = conn.execute(
+            "SELECT * FROM users"
+        ).fetchall()  # Fetch all users
+        conn.close()
+        return render_template("manage_users.html", users=users)
+    else:
+        return redirect(url_for("index"))
+        
+@app.route("/admin/delete_user/<int:user_id>", methods=["POST"])
+def delete_user(user_id):
+    if "logged_in" in session and session["is_admin"]:
+        conn = get_db_connection()
+        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        conn.commit()
+        conn.close()
+        flash("User successfully deleted!", "success")
+        return redirect(url_for("manage_users"))
+    else:
+        return redirect(url_for("index"))
+        
+@app.route("/admin/add_user", methods=["GET", "POST"])
+def add_new_user():
+    if "logged_in" in session and session["is_admin"]:
+        if request.method == "POST":
+            username = request.form["username"]
+            password = request.form["password"]
+            localidade = request.form["localidade"]
+            if add_user(username, password, localidade):
+                flash(
+                    "User successfully added!", "success"
+                )
+            else:
+                flash("Error: Username already exists!", "error")
+            return redirect(url_for("admin_dashboard"))
+        return render_template("add_user.html")
+        
+@app.route("/change_password", methods=["GET", "POST"])
+def change_password():
+    if request.method == "POST":
+        username = request.form["username"]
+        new_password = request.form["new_password"]
+        conn = get_db_connection()
+        user = conn.execute(
+            "SELECT * FROM users WHERE username = ?", (username,)
+        ).fetchone()
+        conn.close()
+        if user:
+            update_password(username, new_password)
+            return redirect("/")
+        else:
+            return "User not found."
 
-# Criação do banco de dados ao iniciar
-create_database()
+    return render_template("change_password.html")
+# Error handling
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template("404.html"), 404
+
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template("500.html"), 500
 
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
+    create_database()
     app.run(host='0.0.0.0', port=5000, debug=True)
