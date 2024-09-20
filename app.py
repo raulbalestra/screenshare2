@@ -212,15 +212,6 @@ def change_password():
             return "User not found."
 
     return render_template("change_password.html")
-# Error handling
-@app.errorhandler(404)
-def page_not_found(e):
-    return render_template("404.html"), 404
-
-
-@app.errorhandler(500)
-def internal_server_error(e):
-    return render_template("500.html"), 500
     
 create_database()
 # Iniciar o aplicativo com acesso externo
