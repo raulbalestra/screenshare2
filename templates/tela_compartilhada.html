@@ -131,7 +131,7 @@
 
     <!-- Campo de link de compartilhamento -->
     <div class="share-link-container">
-        <input type="text" id="shareLink" readonly value="https://screenshare2-1.onrender.com/{{username}}/tela">
+        <input type="text" id="shareLink" readonly value="https://www.paineldefilas-raizen.com.br/{{username}}/tela">
         <button class="copy-btn" onclick="copyLink()">Copiar</button>
     </div>
 
@@ -140,7 +140,7 @@
         let captureInterval;
         const username = "{{ username }}";  // Pega o username da sessão
 
-        document.getElementById('shareLink').value = `https://screenshare2-1.onrender.com/${username}/tela`;
+        document.getElementById('shareLink').value = `https://www.paineldefilas-raizen.com.br/${username}/tela`;
 
         async function startScreenShare() {
             try {
