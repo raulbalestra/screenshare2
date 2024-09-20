@@ -4,7 +4,7 @@ from flask import Flask, render_template, request, redirect, session, url_for, s
 from flask import Flask, render_template, request, redirect, session, url_for, send_file
 from io import BytesIO
 
-app = Flask(_name_)
+app = Flask(__name__)
 app.secret_key = 'sua_chave_secreta_aqui'
 
 # Caminho para salvar a imagem do frame
@@ -132,5 +132,5 @@ def admin_dashboard():
 create_database()
 
 # Iniciar o aplicativo com acesso externo
-if _name_ == "_main_":
+if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5000, debug=True)
