@@ -76,21 +76,22 @@ def add_user(username, password, localidade):
     return True
 
 # Rota para login
-@app.route('/login', methods=['POST'])
+@app.route("/login", methods=["POST"])
 def login():
-    username = request.form['username']
-    password = request.form['password']
+    username = request.form["username"]
+    password = request.form["password"]
     localidade, is_admin = check_login(username, password)
     if localidade:
-        session['logged_in'] = True
-        session['username'] = username
-        session['localidade'] = localidade
-        session['is_admin'] = is_admin
+        session["logged_in"] = True
+        session["username"] = username
+        session["localidade"] = localidade
+        session["is_admin"] = is_admin
         if is_admin:
-            return redirect(url_for('admin_dashboard'))
+            return redirect(url_for("admin_dashboard"))
         else:
-            return redirect(url_for('share_screen'))
-    return redirect(url_for('index'))
+            return redirect(url_for("share_screen", localidade=localidade))
+
+    return redirect(url_for("index"))
 
 # Rota para logout
 @app.route('/logout')
