@@ -133,20 +133,38 @@ def view_screen():
     return redirect(url_for('index'))
 
 # Rota para renderizar a página de compartilhamento de tela
-@app.route('/share_screen')
-def share_screen():
-    if 'logged_in' in session:
-        return render_template('share_screen.html', localidade=session['localidade'])
-    return redirect(url_for('index'))
 
+@app.route("/<localidade>/view_screen")
+def view_screen_by_region(localidade):
+    if "logged_in" in session and session.get("localidade") == localidade:
+        # Renderiza o template com a variável localidade/região
+        return render_template("view_screen.html", regiao=localidade)
+    else:
+        return redirect(
+            url_for("index")
+        )  # Redireciona se a localidade não estiver correta
+
+
+# Rota para gerar o link de compartilhamento por localidade
+@app.route("/<localidade>/share_screen")
+def share_screen(localidade):
+    if "logged_in" in session and session.get("localidade") == localidade:
+        # Gera o link para visualizar a transmissão dessa localidade
+        share_link = url_for(
+            "view_screen_by_region", localidade=localidade, _external=True
+        )
+        return render_template(
+            "share_screen.html", localidade=localidade, share_link=share_link
+        )
+    return redirect(url_for("index"))
 # Página de login
-@app.route('/')
+@app.route("/")
 def index():
-    if 'logged_in' in session:
-        if session['is_admin']:
-            return redirect(url_for('admin_dashboard'))
-        return redirect(url_for('share_screen'))
-    return render_template('login.html')
+    if "logged_in" in session:
+        if session["is_admin"]:
+            return redirect(url_for("admin_dashboard"))
+        return redirect(url_for("share_screen", localidade=session["localidade"]))
+    return render_template("login.html")
 
 # Rota para o painel do administrador (apenas como exemplo)
 @app.route('/admin_dashboard')
