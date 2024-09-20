@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -75,11 +76,62 @@
         button.logout:hover {
             background-color: #c82333;
         }
+
+        /* Estilos para o pop-up modal fixo */
+        .modal {
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            display: flex;
+            /* Mantém sempre visível */
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 600px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .modal-content input {
+            flex-grow: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .copy-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        .copy-btn:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
-        <h2>Compartilhar Tela para {{ localidade }}</h2>
+        <h2>Compartilhar Tela para {{ username }}</h2>
         <video id="screenVideo" autoplay muted></video>
         <div class="controls">
             <button id="shareButton" onclick="startScreenShare()">Iniciar Compartilhamento</button>
@@ -88,11 +140,21 @@
         </div>
     </div>
 
+    <!-- Modal para exibir o link de compartilhamento -->
+    <div id="shareModal" class="modal">
+        <div class="modal-content">
+            <input type="text" id="shareLink" value="https://screenshare2-v3.onrender.com/{{ username }}/tela" readonly>
+            <button class="copy-btn" onclick="copyLink()">Copiar Link</button>
+        </div>
+    </div>
+
     <script>
         let screenStream;
         let captureInterval;
 
-        async function startScreenShare() {
+        function isScreenSharingSupported() {
+           
+        }
             try {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
                 const videoElement = document.getElementById('screenVideo');
@@ -100,11 +162,10 @@
                 document.getElementById('shareButton').disabled = true;
                 document.getElementById('stopButton').disabled = false;
                 captureAndSendFrames();
-                window.open("/{{ localidade }}/view_screen", "_blank");
             } catch (err) {
                 console.error("Erro ao compartilhar a tela: ", err);
             }
-        }
+        
 
         function captureAndSendFrames() {
             const videoElement = document.getElementById('screenVideo');
@@ -118,12 +179,15 @@
                 canvas.toBlob((blob) => {
                     if (blob) {
                         const formData = new FormData();
-                        formData.append('frame', blob, 'frame.png');
-                        fetch(`/upload_frame/{{ localidade }}`, {
+                        formData.append('frame', blob, 'frames.png');
+                        console.log("Enviando frame...");  // Verifica se os frames estão sendo enviados
+                        fetch(`/{{ username }}/upload_frame`, {
                             method: 'POST',
                             body: formData
                         }).then(response => {
-                            if (!response.ok) console.error('Erro ao enviar frame');
+                            if (!response.ok) {
+                                console.error('Erro ao enviar frame');
+                            }
                         }).catch(error => console.error('Erro de conexão ao enviar frame:', error));
                     }
                 }, 'image/png');
@@ -141,6 +205,15 @@
             document.getElementById('stopButton').disabled = true;
             console.log('Compartilhamento de tela parado.');
         }
+
+        // Função para copiar o link de compartilhamento
+        function copyLink() {
+            var copyText = document.getElementById("shareLink");
+            copyText.select();
+            document.execCommand("copy");
+            alert("Link copiado: " + copyText.value);
+        }
     </script>
 </body>
+
 </html>
