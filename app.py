@@ -59,7 +59,20 @@ def add_user(username, password, localidade):
         return False  # Retorna False se o usuário já existe
     conn.close()
     return True
-
+# Function to update password and display the new password
+def update_password(username, new_password):
+    conn = get_db_connection()
+    conn.execute(
+        "UPDATE users SET password = ? WHERE username = ?", (new_password, username)
+    )
+    conn.commit()
+    user = conn.execute(
+        "SELECT password FROM users WHERE username = ?", (username,)
+    ).fetchone()
+    conn.close()
+    if user:
+        updated_password = user["password"]
+        print(f"The new password for {username} is: {updated_password}")
 # Rota para login
 @app.route('/login', methods=['POST'])
 def login():
@@ -163,7 +176,24 @@ def add_new_user():
                 flash("Error: Username already exists!", "error")
             return redirect(url_for("admin_dashboard"))
         return render_template("add_user.html")
+        
+@app.route("/change_password", methods=["GET", "POST"])
+def change_password():
+    if request.method == "POST":
+        username = request.form["username"]
+        new_password = request.form["new_password"]
+        conn = get_db_connection()
+        user = conn.execute(
+            "SELECT * FROM users WHERE username = ?", (username,)
+        ).fetchone()
+        conn.close()
+        if user:
+            update_password(username, new_password)
+            return redirect("/")
+        else:
+            return "User not found."
 
+    return render_template("change_password.html")
 @app.route('/')
 def index():
     if 'logged_in' in session:
