@@ -1,87 +1,52 @@
 import os
 import sqlite3
-from flask import (
-    Flask,
-    flash,
-    render_template,
-    request,
-    redirect,
-    session,
-    url_for,
-    send_file,
-)
-from flask_cors import CORS
+from flask import Flask, render_template, request, redirect, session, url_for, send_file, jsonify
+from flask import Flask, render_template, request, redirect, session, url_for, send_file
 from io import BytesIO
 
 app = Flask(__name__)
-app.secret_key = "sua_chave_secreta_aqui"
-CORS(app, supports_credentials=True)  # Ensuring CORS is properly set for all routes
-frame_base_path = "frames"
+app.secret_key = 'sua_chave_secreta_aqui'
 
+# Caminho para salvar a imagem do frame
+frame_path = 'current_frame.png'
 
-# Function to connect to the database
+# Função para conectar ao banco de dados
 def get_db_connection():
-    conn = sqlite3.connect("users.db")
+    conn = sqlite3.connect('users.db')
     conn.row_factory = sqlite3.Row
     return conn
 
-
-# Function to create the database
+# Função para criar o banco de dados
 def create_database():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute(
-        """
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             localidade TEXT NOT NULL,
-            is_admin INTEGER DEFAULT 0
+            is_admin INTEGER DEFAULT 0  -- 0 para usuários comuns, 1 para admin
         )
-        """
-    )
-    cursor.execute(
-        """
+    ''')
+    cursor.execute('''
         INSERT OR IGNORE INTO users (username, password, localidade, is_admin)
         VALUES
         ('curitiba_user', 'senha_curitiba', 'curitiba', 0),
         ('sp_user', 'senha_sp', 'sp', 0),
-        ('admin', 'admin', 'admin', 1)
-        """
-    )
+        ('admin', 'admin', 'admin', 1)  -- Admin com valor 1
+    ''')
     conn.commit()
     conn.close()
 
-
-# Function to validate login
+# Função para validar o login
 def check_login(username, password):
     conn = get_db_connection()
-    user = conn.execute(
-        "SELECT * FROM users WHERE username = ? AND password = ?", (username, password)
-    ).fetchone()
+    user = conn.execute('SELECT * FROM users WHERE username = ? AND password = ?', (username, password)).fetchone()
     conn.close()
     if user:
-        return user["localidade"], user["is_admin"]
+        return user['localidade'], user['is_admin']  # Retorna a localidade e se é admin
     return None, None
-
-
-# Function to update password and display the new password
-def update_password(username, new_password):
-    conn = get_db_connection()
-    conn.execute(
-        "UPDATE users SET password = ? WHERE username = ?", (new_password, username)
-    )
-    conn.commit()
-    user = conn.execute(
-        "SELECT password FROM users WHERE username = ?", (username,)
-    ).fetchone()
-    conn.close()
-    if user:
-        updated_password = user["password"]
-        print(f"The new password for {username} is: {updated_password}")
-
-
 def add_user(username, password, localidade):
     conn = get_db_connection()
     try:
@@ -95,111 +60,70 @@ def add_user(username, password, localidade):
     conn.close()
     return True
 
-
-def get_frame_path(localidade):
-    frame_folder = os.path.join(frame_base_path, localidade)
-    if not os.path.exists(frame_folder):
-        try:
-            os.makedirs(frame_folder)  # Ensure the directory is created
-        except Exception as e:
-            print(f"Failed to create directory {frame_folder}: {e}")
-            return None
-    return os.path.join(frame_folder, "current_frame.png")
-
-
-
-# Route for login
-@app.route("/login", methods=["POST"])
+# Rota para login
+@app.route('/login', methods=['POST'])
 def login():
-    username = request.form["username"]
-    password = request.form["password"]
+    username = request.form['username']
+    password = request.form['password']
     localidade, is_admin = check_login(username, password)
     if localidade:
-        session["logged_in"] = True
-        session["username"] = username
-        session["localidade"] = localidade
-        session["is_admin"] = is_admin
+        session['logged_in'] = True
+        session['username'] = username
+        session['localidade'] = localidade
+        session['is_admin'] = is_admin
         if is_admin:
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for('admin_dashboard'))
         else:
-            return redirect(url_for("compartilhar_tela", username=username))
-    return redirect(url_for("index"))
+            return redirect(url_for('share_screen'))
+    return redirect(url_for('index'))
 
+# Rota para logout
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
 
-# Route for sharing screen
-@app.route("/<username>/compartilhar-tela")
-def compartilhar_tela(username):
-    if "logged_in" in session and session.get("username") == username:
-        localidade = session.get("localidade")
-        share_link = url_for("view_screen_by_region", username=username, _external=True)
-        return render_template(
-            "tela-compartilhada.html",
-            localidade=localidade,
-            username=username,
-            share_link=share_link,
-        )
-    return redirect(url_for("index"))
-
-
-@app.route("/<username>/tela", endpoint="view_screen_by_region")
-def view_screen_by_region(username):
-    localidade = username  # Or retrieve 'localidade' from the database if needed
-    return render_template("tela.html", regiao=localidade, username=username)
-
-
-@app.route("/<localidade>/upload_frame", methods=["POST"])
-def upload_frame(localidade):
-    if "logged_in" in session and session.get("localidade") == localidade:
-        if "frame" in request.files:
-            frame = request.files["frame"]
-            print(f"Frame received for {localidade}")
-            frame_path = get_frame_path(localidade)
-            if frame_path:
-                try:
-                    frame.save(frame_path)
-                    print(f"Frame successfully saved at {frame_path}")
-                except Exception as e:
-                    print(f"Error saving frame: {e}")
-                    return "", 500
-            else:
-                print(f"Invalid frame path for {localidade}")
-                return "Failed to generate frame path", 500
-        else:
-            print("No frame received.")
-        return "", 204
-    return redirect(url_for("index"))
-
-
-
-@app.route("/<username>/screen.png")
-def serve_pil_image(username):
-    frame_path = get_frame_path(username)
-    if os.path.exists(frame_path):
-        return send_file(frame_path, mimetype="image/png")
+# Rota para receber os frames da aba selecionada
+@app.route('/upload_frame', methods=['POST'])
+def upload_frame():
+    if 'frame' in request.files:
+        frame = request.files['frame']
+        try:
+            # Salva a imagem recebida como 'current_frame.png'
+            frame.save(frame_path)
+            print('Frame recebido e salvo com sucesso.')
+        except Exception as e:
+            print(f'Erro ao salvar o frame: {e}')
+            return '', 500
     else:
-        return "Frame não encontrado.", 404
+        print('Nenhum frame recebido.')
+    return '', 204
 
+# Rota para servir a imagem mais recente
+@app.route('/screen.png')
+def serve_pil_image():
+    if os.path.exists(frame_path):
+        print('Servindo a imagem mais recente.')
+        return send_file(frame_path, mimetype='image/png')
+    else:
+        print('Arquivo de imagem não encontrado.')
+        return '', 404
 
+# Rota pública para visualizar a tela (acessível externamente)
+@app.route('/view_screen')
+def view_screen():
+    return render_template('view_screen.html')
+    if 'logged_in' in session:
+        return render_template('view_screen.html')
+    return redirect(url_for('index'))
 
-
-# Main page
-@app.route("/")
-def index():
-    if "logged_in" in session:
-        if session["is_admin"]:
-            return redirect(url_for("admin_dashboard"))
-        # Use "username" instead of "localidade"
-        return redirect(url_for("compartilhar_tela", username=session["username"]))
-    return render_template("login.html")
-
-
-# Admin dashboard route
-@app.route("/admin_dashboard")
-def admin_dashboard():
-    if "logged_in" in session and session["is_admin"]:
-        return render_template("admin.html")
-    return redirect(url_for("index"))
-
+# Rota para renderizar a página de compartilhamento de tela
+@app.route('/share_screen')
+def share_screen():
+    if 'logged_in' in session:
+        return render_template('share_screen.html', localidade=session['localidade'])
+    return redirect(url_for('index'))
+    
 
 @app.route("/admin/manage_users")
 def manage_users():
@@ -213,7 +137,6 @@ def manage_users():
     else:
         return redirect(url_for("index"))
 
-
 @app.route("/admin/delete_user/<int:user_id>", methods=["POST"])
 def delete_user(user_id):
     if "logged_in" in session and session["is_admin"]:
@@ -225,8 +148,6 @@ def delete_user(user_id):
         return redirect(url_for("manage_users"))
     else:
         return redirect(url_for("index"))
-
-
 @app.route("/admin/add_user", methods=["GET", "POST"])
 def add_new_user():
     if "logged_in" in session and session["is_admin"]:
@@ -243,46 +164,24 @@ def add_new_user():
             return redirect(url_for("admin_dashboard"))
         return render_template("add_user.html")
 
+@app.route('/')
+def index():
+    if 'logged_in' in session:
+        if session['is_admin']:
+            return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('share_screen'))
+    return render_template('login.html')
 
-# Route for changing password
-@app.route("/change_password", methods=["GET", "POST"])
-def change_password():
-    if request.method == "POST":
-        username = request.form["username"]
-        new_password = request.form["new_password"]
-        conn = get_db_connection()
-        user = conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
-        conn.close()
-        if user:
-            update_password(username, new_password)
-            return redirect("/")
-        else:
-            return "User not found."
+# Rota para o painel do administrador (apenas como exemplo)
+@app.route('/admin_dashboard')
+def admin_dashboard():
+    if 'logged_in' in session and session['is_admin']:
+        return render_template('admin_dashboard.html')
+    return redirect(url_for('index'))
 
-    return render_template("change_password.html")
+# Criação do banco de dados ao iniciar
+create_database()
 
-
-# Route for logging out
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("index"))
-
-
-# Error handling
-@app.errorhandler(404)
-def page_not_found(e):
-    return render_template("404.html"), 404
-
-
-@app.errorhandler(500)
-def internal_server_error(e):
-    return render_template("500.html"), 500
-
-
-# Initialize the database and start the app with external access
+# Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
-    create_database()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
