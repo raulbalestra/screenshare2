@@ -125,7 +125,7 @@ def index():
 @app.route('/admin_dashboard')
 def admin_dashboard():
     if 'logged_in' in session and session['is_admin']:
-        return render_template('admin_dashboard.html')
+        return render_template('admin.html')
     return redirect(url_for('index'))
 
 # Criação do banco de dados ao iniciar
