@@ -126,24 +126,15 @@ def serve_pil_image():
         return '', 404
 
 # Rota pública para visualizar a tela (acessível externamente)
+# Rota pública para visualizar a tela (acessível externamente)
 @app.route('/view_screen')
 def view_screen():
     return render_template('view_screen.html')
-    if 'logged_in' in session:
-        return render_template('view_screen.html')
-    return redirect(url_for('index'))
 
 # Rota para renderizar a página de compartilhamento de tela
-
 @app.route("/<localidade>/view_screen")
 def view_screen_by_region(localidade):
-    if "logged_in" in session and session.get("localidade") == localidade:
-        # Renderiza o template com a variável localidade/região
-        return render_template("view_screen.html", regiao=localidade)
-    else:
-        return redirect(
-            url_for("index")
-        )  # Redireciona se a localidade não estiver correta
+    return render_template("view_screen.html", regiao=localidade)
 
 
 # Rota para gerar o link de compartilhamento por localidade
