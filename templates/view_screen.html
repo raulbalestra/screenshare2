@@ -4,16 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualizar Tela Compartilhada</title>
-    <script>
-        function fetchImage() {
-            setInterval(() => {
-                const url = "/screen.png?random=" + new Date().getTime();
-                const imgElement = document.getElementById('screen');
-                imgElement.src = url;
-            }, 1000); // Atualiza a cada segundo
-        }
-        document.addEventListener("DOMContentLoaded", fetchImage);
-    </script>
     <style>
          body {
             margin: 0;
