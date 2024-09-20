@@ -100,6 +100,7 @@ def add_user(username, password, localidade):
 
 
 # Rota para login
+# Rota para login
 @app.route("/login", methods=["POST"])
 def login():
     username = request.form["username"]
@@ -113,7 +114,7 @@ def login():
         if is_admin:
             return redirect(url_for("admin_dashboard"))
         else:
-            return redirect(url_for("share_screen", localidade=localidade))
+            return redirect(url_for("share_screen", username=username))
 
     return redirect(url_for("index"))
 
@@ -162,21 +163,20 @@ def tela():
 
 
 # Rota para renderizar a página de visualização de tela por localidade
-@app.route("/<localidade>/tela")
-def view_screen_by_region(localidade):
-    return render_template("tela.html", regiao=localidade)
+@app.route("/username>/tela")
+def view_screen_by_region(username):
+    return render_template("tela.html", username=username)
 
-
-@app.route("/<localidade>/tela-compartilhada")
-def share_screen(localidade):
-    if "logged_in" in session and session.get("localidade") == localidade:
+@app.route("/<username>/tela-compartilhada")
+def share_screen(username):
+    if "logged_in" in session and session.get("username") == username:
         # Gera o link para visualizar a transmissão dessa localidade
         share_link = url_for(
-            "view_screen_by_region", localidade=localidade, _external=True
+            "view_screen_by_region", username=username, _external=True
         )
         username = session.get("username")
         return render_template(
-            "tela_compartilhada.html", localidade=localidade, share_link=share_link, username=username
+            "tela_compartilhada.html",username=username , share_link=share_link
         )
 
     return redirect(url_for("index"))
