@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,7 +12,6 @@
                 imgElement.src = url;
             }, 1000); // Atualiza a cada segundo
         }
-
         document.addEventListener("DOMContentLoaded", fetchImage);
     </script>
     <style>
@@ -25,7 +23,6 @@
             height: 100vh;
             background-color: #000;
         }
-
         img {
             width: 100%;
             height: 100%;
@@ -33,18 +30,15 @@
         }
     </style>
 </head>
-
 <body>
-    <!-- Imagem da tela compartilhada -->
-    <img src="/{{ regiao }}/screen.png" alt="Tela compartilhada">
-
-    <!-- Este script fará a atualização automática da imagem -->
+    <img id="screen" src="/screen.png" alt="Captura de Tela">
     <script>
-        setInterval(function () {
-            // Atualiza a imagem a cada 1 segundo
-            document.querySelector("img").src = "/{{ regiao }}/screen.png?timestamp=" + new Date().getTime();
-        }, 1000);
+        function updateScreen() {
+            const screenElement = document.getElementById('screen');
+            screenElement.src = '/screen.png?random=' + new Date().getTime(); // Adiciona um timestamp para evitar cache
+        }
+        setInterval(updateScreen, 1000); // Atualiza a cada 1 segundo
     </script>
+    <img id="screen">
 </body>
-
 </html>
