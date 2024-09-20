@@ -99,20 +99,21 @@ def add_user(username, password, localidade):
     return True
 
 
+# Rota para login
 @app.route("/login", methods=["POST"])
 def login():
     username = request.form["username"]
     password = request.form["password"]
     localidade, is_admin = check_login(username, password)
+    
     if localidade:
         session["logged_in"] = True
         session["username"] = username
         session["localidade"] = localidade
         session["is_admin"] = is_admin
-        if is_admin:
-            return redirect(url_for("admin_dashboard"))
-        else:
-            return redirect(url_for("share_screen", localidade=localidade))
+        
+        # Redireciona o usuário para a URL com o nome de usuário
+        return redirect(url_for("share_screen", username=username))
 
     return redirect(url_for("index"))
 
@@ -165,14 +166,16 @@ def view_screen_by_region(localidade):
     return render_template("tela.html", regiao=localidade)
 
 
-@app.route("/<localidade>/tela-compartilhada")
-def share_screen(localidade):
-    if "logged_in" in session and session.get("localidade") == localidade:
+@app.route("/<username>/tela-compartilhada")
+def share_screen(username):
+    # Obtenha a localidade da sessão
+    localidade = session.get("localidade")
+    
+    if "logged_in" in session and localidade:
         # Gera o link para visualizar a transmissão dessa localidade
         share_link = url_for(
             "view_screen_by_region", localidade=localidade, _external=True
         )
-        username = session.get("username")
         return render_template(
             "tela_compartilhada.html", localidade=localidade, share_link=share_link, username=username
         )
