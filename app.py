@@ -180,6 +180,7 @@ def share_screen(localidade):
 
     return redirect(url_for("index"))
 
+
 # Página de login
 @app.route("/")
 def index():
