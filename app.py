@@ -124,15 +124,16 @@ def logout():
     return redirect(url_for("index"))
 
 
-# Rota para receber os frames da aba selecionada
-@app.route("/upload_frame", methods=["POST"])
-def upload_frame():
+@app.route("/<localidade>/upload_frame", methods=["POST"])
+def upload_frame(localidade):
+    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")  # Salva o frame com o nome baseado na localidade
+    
     if "frame" in request.files:
         frame = request.files["frame"]
         try:
-            # Salva a imagem recebida como 'current_frame.png'
-            frame.save(frame_path)
-            print(f"Frame recebido e salvo com sucesso em {frame_path}.")
+            # Salva a imagem recebida como 'localidade_frame.png'
+            frame.save(frame_path_local)
+            print(f"Frame recebido e salvo com sucesso em {frame_path_local}.")
         except Exception as e:
             print(f"Erro ao salvar o frame: {e}")
             return "", 500
@@ -142,14 +143,17 @@ def upload_frame():
 
 
 
-@app.route("/screen.png")
-def serve_pil_image():
-    if os.path.exists(frame_path):
-        print("Servindo a imagem mais recente.")
-        return send_file(frame_path, mimetype="image/png")
+@app.route("/<localidade>/screen.png")
+def serve_pil_image(localidade):
+    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")  # Pega o frame específico da localidade
+    
+    if os.path.exists(frame_path_local):
+        print(f"Servindo a imagem mais recente para {localidade}.")
+        return send_file(frame_path_local, mimetype="image/png")
     else:
-        print(f"Arquivo de imagem não encontrado no caminho: {frame_path}")
+        print(f"Arquivo de imagem não encontrado no caminho: {frame_path_local}")
         return "", 404
+
 
 
 # Rota pública para visualizar a tela (acessível externamente)
@@ -163,7 +167,8 @@ def tela():
 # Rota para renderizar a página de visualização de tela por localidade
 @app.route("/<localidade>/tela")
 def view_screen_by_region(localidade):
-    return render_template("tela.html", regiao=localidade)
+    return render_template("tela.html", localidade=localidade)
+
 
 
 @app.route("/<localidade>/tela-compartilhada")
@@ -179,6 +184,7 @@ def share_screen(localidade):
         )
 
     return redirect(url_for("index"))
+
 
 # Página de login
 @app.route("/")
@@ -255,7 +261,17 @@ def change_password():
 
     return render_template("change_password.html")
 
-
+@app.route("/clear_cache", methods=["POST"])
+def clear_cache():
+    try:
+        if os.path.exists(frame_path):
+            os.remove(frame_path)
+            return jsonify({"message": "Cache limpo com sucesso."}), 200
+        else:
+            return jsonify({"message": "Nenhum cache encontrado."}), 404
+    except Exception as e:
+        return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
+    
 create_database()
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
