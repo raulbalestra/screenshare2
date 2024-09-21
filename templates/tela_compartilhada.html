@@ -93,7 +93,8 @@
             padding: 15px;
             border-top: 1px solid #ddd;
             box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.1);
-            z-index: 1000; /* Certifique-se de que está acima de outros elementos */
+            z-index: 1000;
+            /* Certifique-se de que está acima de outros elementos */
         }
 
         .share-link-container input {
@@ -137,7 +138,7 @@
     <!-- Campo de link de compartilhamento fixo na parte inferior -->
     <div class="share-link-container">
         <input type="text" id="shareLink" readonly
-            value="https://screenshare2-1.onrender.com/{{ localidade }}/tela">
+            value="https://www.paineldefilas-raizen.com.br/{{ localidade }}/tela">
         <button class="copy-btn" onclick="copyLink()">Copiar</button>
     </div>
 
@@ -146,7 +147,7 @@
         let captureInterval;
         const localidade = "{{ localidade }}";  // Pega a localidade da sessão
 
-        document.getElementById('shareLink').value = `https://screenshare2-1.onrender.com/${localidade}/tela`;
+        document.getElementById('shareLink').value = `https://www.paineldefilas-raizen.com.br/${localidade}/tela`;
 
         async function startScreenShare() {
             try {
@@ -167,6 +168,8 @@
             const videoElement = document.getElementById('screenVideo');
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
+            const localidade = "{{ localidade }}";  // Pegue a localidade da sessão
+
             captureInterval = setInterval(() => {
                 canvas.width = videoElement.videoWidth;
                 canvas.height = videoElement.videoHeight;
@@ -178,8 +181,8 @@
                     if (blob) {
                         const formData = new FormData();
                         formData.append('frame', blob, 'frame.png');
-                        // Envia o frame atual para o endpoint '/upload_frame'
-                        fetch('/upload_frame', {
+                        // Envia o frame atual para o endpoint '/<localidade>/upload_frame'
+                        fetch(`/${localidade}/upload_frame`, {
                             method: 'POST',
                             body: formData
                         }).then(response => {
@@ -196,6 +199,7 @@
             }, 1000); // Captura a cada 1 segundo
         }
 
+
         function stopScreenShare() {
             clearInterval(captureInterval);
             if (screenStream) {
@@ -207,6 +211,11 @@
             document.getElementById('shareButton').disabled = false;
             document.getElementById('stopButton').disabled = true;
             console.log('Compartilhamento de tela parado.');
+            fetch('/clear_cache', {
+                method: 'POST'
+            }).then(response => response.json())
+                .then(data => console.log(data.message))
+                .catch(error => console.error('Erro ao limpar o cache:', error));
         }
 
         function copyLink() {
