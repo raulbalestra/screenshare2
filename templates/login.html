@@ -102,6 +102,25 @@
             color: #45a049;
         }
 
+        /* Estilos para as mensagens de alerta */
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        .alert.success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+
+        .alert.error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+
         /* Adicionando responsividade */
         @media (max-width: 400px) {
             .container {
@@ -122,6 +141,16 @@
 <body>
     <div class="container">
         <h2>Login</h2>
+
+        <!-- Bloco para exibir as mensagens flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert {{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
         <form method="POST" action="/login">
             <label for="username">Usuário:</label>
             <input type="text" id="username" name="username" required>
