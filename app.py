@@ -11,7 +11,6 @@ from flask import (
     send_file,
     jsonify,
 )
-from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
@@ -146,6 +145,7 @@ def serve_pil_image(localidade):
     if os.path.exists(frame_path_local):
         print(f"Servindo a imagem mais recente para {localidade}.")
         response = send_file(frame_path_local, mimetype="image/png")
+        # Cabeçalhos para evitar cache
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
