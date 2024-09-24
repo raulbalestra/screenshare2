@@ -163,7 +163,7 @@
 
       document.getElementById(
         "shareLink"
-      ).value = `https://screenshare2-3.onrender.com/${localidade}/tela`;
+      ).vvalue = `${window.location.origin}/${localidade}/tela`;
 
       async function startScreenShare() {
         try {
@@ -217,32 +217,28 @@
         }, 1000); // Captura a cada 1 segundo
       }
 
-      function stopScreenShare() {
-        clearInterval(captureInterval);
-        if (screenStream) {
-          let tracks = screenStream.getTracks();
-          tracks.forEach((track) => track.stop());
-        }
-        const videoElement = document.getElementById("screenVideo");
-        videoElement.srcObject = null;
-        document.getElementById("shareButton").disabled = false;
-        document.getElementById("stopButton").disabled = true;
-        console.log("Compartilhamento de tela parado.");
-        fetch(`/${localidade}/clear_cache`, {
-          method: "POST",
-        })
-          .then((response) => response.json())
-          .then((data) => console.log(data.message))
-          .catch((error) => console.error("Erro ao limpar o cache:", error));
-      }
+     function stopScreenShare() {
+    clearInterval(captureInterval);
+    if (screenStream) {
+      let tracks = screenStream.getTracks();
+      tracks.forEach((track) => track.stop());
+    }
+    const videoElement = document.getElementById("screenVideo");
+    videoElement.srcObject = null;
+    document.getElementById("shareButton").disabled = false;
+    document.getElementById("stopButton").disabled = true;
+    console.log("Compartilhamento de tela parado.");
 
-      function copyLink() {
-        const shareLink = document.getElementById("shareLink");
-        shareLink.select();
-        shareLink.setSelectionRange(0, 99999); // Para dispositivos móveis
-        document.execCommand("copy");
-        alert("Link copiado: " + shareLink.value);
-      }
+    const baseURL = window.location.origin;
+    console.log(`Enviando requisição para limpar cache em ${baseURL}/${localidade}/clear_cache`);
+
+    fetch(`${baseURL}/${localidade}/clear_cache`, {
+      method: "POST",
+    })
+      .then((response) => response.json())
+      .then((data) => console.log(data.message))
+      .catch((error) => console.error("Erro ao limpar o cache:", error));
+  }
     </script>
   </body>
 </html>
