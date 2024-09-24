@@ -306,20 +306,17 @@ def change_password():
 @app.route("/<localidade>/clear_cache", methods=["POST"])
 def clear_cache(localidade):
     frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")
+    print(f"Tentando deletar o arquivo: {frame_path_local}")
     try:
         if os.path.exists(frame_path_local):
             os.remove(frame_path_local)
+            print("Arquivo deletado com sucesso.")
             return jsonify({"message": "Cache limpo com sucesso."}), 200
         else:
-            return (
-                jsonify(
-                    {
-                        "message": "Nenhum cache encontrado para a localidade especificada."
-                    }
-                ),
-                404,
-            )
+            print("Arquivo não encontrado.")
+            return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
     except Exception as e:
+        print(f"Erro ao deletar o arquivo: {e}")
         return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
 
 
