@@ -156,13 +156,14 @@ def upload_frame(localidade):
 
 @app.route("/<localidade>/screen.png")
 def serve_pil_image(localidade):
-    frame_path_local = os.path.join(
-        os.getcwd(), f"{localidade}_frame.png"
-    )  # Pega o frame específico da localidade
-
+    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")
     if os.path.exists(frame_path_local):
         print(f"Servindo a imagem mais recente para {localidade}.")
-        return send_file(frame_path_local, mimetype="image/png")
+        response = send_file(frame_path_local, mimetype="image/png")
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     else:
         print(f"Arquivo de imagem não encontrado no caminho: {frame_path_local}")
         return "", 404
@@ -306,17 +307,18 @@ def change_password():
 @app.route("/<localidade>/clear_cache", methods=["POST"])
 def clear_cache(localidade):
     frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")
-    print(f"Tentando deletar o arquivo: {frame_path_local}")
+    print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
+    print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
     try:
         if os.path.exists(frame_path_local):
             os.remove(frame_path_local)
-            print("Arquivo deletado com sucesso.")
+            print("[clear_cache] Arquivo deletado com sucesso.")
             return jsonify({"message": "Cache limpo com sucesso."}), 200
         else:
-            print("Arquivo não encontrado.")
+            print("[clear_cache] Arquivo não encontrado.")
             return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
     except Exception as e:
-        print(f"Erro ao deletar o arquivo: {e}")
+        print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
         return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
 
 
