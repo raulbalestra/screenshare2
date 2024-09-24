@@ -1,48 +1,156 @@
-<!-- admin.html -->
+<!-- templates/admin.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <title>Painel de Administração</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Importando Font Awesome com hash de integridade atualizado -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-t5R+Kvzml0eFq9X7+VGFhrJ1j9J0d4n+nQpXh1LLnB5/ZTvjqIhaLxV9F0R2Iqz63mDq6k59KX4R2p10iqA2Gw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        /* Estilos básicos */
+        /* Variáveis de Cores */
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #f0f4f8;
+            --accent-color: #28a745;
+            --error-color: #dc3545;
+            --success-color: #28a745;
+            --text-color: #333333;
+            --background-color: #ffffff;
+            --button-color: #007bff;
+            --button-hover-color: #0056b3;
+            --add-button-color: #28a745;
+            --add-button-hover-color: #218838;
+            --logout-button-color: #6c757d;
+            --logout-button-hover-color: #5a6268;
+            --border-color: #dddddd;
+            --box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            --transition-speed: 0.3s;
+            --border-radius: 8px;
+            --font-size: 16px;
+        }
+
+        /* Reset Básico */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-            padding: 20px;
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--secondary-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--text-color);
         }
+
+        /* Container Principal */
         .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            max-width: 600px;
-            margin: auto;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-            text-align: center;
+            background-color: var(--background-color);
+            padding: 40px 30px;
+            border-radius: var(--border-radius);
+            max-width: 700px;
+            width: 100%;
+            box-shadow: var(--box-shadow);
+            transition: transform var(--transition-speed);
+            position: relative;
         }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Título */
         h2 {
-            margin-bottom: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--primary-color);
+            font-size: 2em;
+            font-weight: 700;
+            position: relative;
         }
-        a {
-            display: inline-block;
-            margin: 10px;
+
+        h2::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background-color: var(--primary-color);
+            margin: 10px auto 0;
+            border-radius: 2px;
+        }
+
+        /* Botões de Ação */
+        .actions {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .button {
             padding: 12px 20px;
-            background-color: #007bff;
+            background-color: var(--button-color);
             color: white;
+            border: none;
+            border-radius: var(--border-radius);
             text-decoration: none;
-            border-radius: 5px;
+            font-size: var(--font-size);
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color var(--transition-speed), transform var(--transition-speed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 200px;
         }
-        a:hover {
-            background-color: #0056b3;
+
+        .button i {
+            margin-right: 8px;
+        }
+
+        .button:hover {
+            background-color: var(--button-hover-color);
+            transform: translateY(-2px);
+        }
+
+        /* Botão Adicionar Usuário */
+        .add-user-btn {
+            background-color: var(--add-button-color);
+        }
+
+        .add-user-btn:hover {
+            background-color: var(--add-button-hover-color);
+        }
+
+        /* Botão Logout */
+        .logout-btn {
+            background-color: var(--logout-button-color);
+        }
+
+        .logout-btn:hover {
+            background-color: var(--logout-button-hover-color);
+        }
+
+        /* Responsividade */
+        @media (max-width: 600px) {
+            .button {
+                min-width: 100%;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Painel de Administração</h2>
-        <a href="{{ url_for('manage_users') }}">Gerenciar Usuários</a>
-        <a href="{{ url_for('add_new_user') }}">Adicionar Novo Usuário</a>
-        <a href="{{ url_for('logout') }}">Logout</a>
+        <h2><i class="fas fa-user-shield"></i> Painel de Administração</h2>
+        <div class="actions">
+            <a href="{{ url_for('manage_users') }}" class="button manage-users-btn"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a>
+            <a href="{{ url_for('add_new_user') }}" class="button add-user-btn"><i class="fas fa-user-plus"></i> Adicionar Novo Usuário</a>
+            <a href="{{ url_for('logout') }}" class="button logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
     </div>
 </body>
 </html>

@@ -370,6 +370,48 @@ def admin_change_password(user_id):
         return redirect(url_for("index"))
 
 
+# Rota para o administrador alterar sua própria senha
+@app.route("/admin/change_own_password", methods=["GET", "POST"])
+def admin_change_own_password():
+    if "logged_in" in session and session.get("is_admin"):
+        if request.method == "POST":
+            username = session.get("username")
+            current_password = request.form["current_password"]
+            new_password = request.form["new_password"]
+            confirm_password = request.form["confirm_password"]
+
+            if not current_password or not new_password or not confirm_password:
+                flash("Todos os campos são obrigatórios.", "error")
+                return redirect(url_for("admin_change_own_password"))
+
+            if new_password != confirm_password:
+                flash("As senhas não coincidem.", "error")
+                return redirect(url_for("admin_change_own_password"))
+
+            conn = get_db_connection()
+            user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
+            if user and check_password_hash(user["password"], current_password):
+                try:
+                    hashed_password = generate_password_hash(new_password)
+                    conn.execute("UPDATE users SET password = ? WHERE username = ?", (hashed_password, username))
+                    conn.commit()
+                    conn.close()
+                    flash("Senha atualizada com sucesso.", "success")
+                    return redirect(url_for("admin_dashboard"))
+                except Exception as e:
+                    conn.close()
+                    flash(f"Erro ao atualizar a senha: {str(e)}", "error")
+                    return redirect(url_for("admin_change_own_password"))
+            else:
+                conn.close()
+                flash("Senha atual incorreta.", "error")
+                return redirect(url_for("admin_change_own_password"))
+        return render_template("admin_change_own_password.html")
+    else:
+        flash("Acesso não autorizado.", "error")
+        return redirect(url_for("index"))
+
+
 # Rota para o usuário alterar sua própria senha
 @app.route("/change_password", methods=["GET", "POST"])
 def change_password():

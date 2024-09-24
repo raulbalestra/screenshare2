@@ -10,40 +10,96 @@
     <!-- Importando Font Awesome para ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        /* Reset básico */
-        * {
+        /* Variáveis de Cores */
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #f0f4f8;
+            --accent-color: #28a745;
+            --error-color: #dc3545;
+            --success-color: #28a745;
+            --text-color: #333333;
+            --background-gradient: linear-gradient(135deg, #6B73FF 0%, #000DFF 100%);
+            --container-bg: #ffffff;
+            --input-bg-color: #f9f9f9;
+            --input-border-color: #cccccc;
+            --input-focus-border-color: #4a90e2;
+            --button-bg-color: #4a90e2;
+            --button-hover-bg-color: #357ABD;
+            --button-active-bg-color: #2a65a0;
+            --font-family: 'Roboto', sans-serif;
+            --transition-speed: 0.3s;
+            --border-radius: 12px;
+            --box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Reset Básico */
+        *, *::before, *::after {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
         }
 
         body {
-            font-family: 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #6B73FF 0%, #000DFF 100%);
+            font-family: var(--font-family);
+            background: var(--background-gradient);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
-            color: #333;
+            color: var(--text-color);
+            overflow: hidden;
         }
 
+        /* Container Principal */
         .container {
-            background-color: #fff;
-            border-radius: 12px;
+            background-color: var(--container-bg);
+            border-radius: var(--border-radius);
             padding: 40px 30px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            box-shadow: var(--box-shadow);
             width: 100%;
             max-width: 400px;
             text-align: center;
             animation: fadeIn 0.6s ease-in-out;
             position: relative;
+            z-index: 1;
         }
 
+        /* Elemento Decorativo */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 60px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Título */
         h2 {
             margin-bottom: 30px;
-            color: #4a90e2;
+            color: var(--primary-color);
             font-size: 1.8em;
             font-weight: 500;
+            position: relative;
+        }
+
+        h2::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background-color: var(--primary-color);
+            margin: 10px auto 0;
+            border-radius: 2px;
         }
 
         /* Estilos para mensagens flash */
@@ -62,11 +118,11 @@
         }
 
         .flash-messages li.success {
-            background-color: #28a745;
+            background-color: var(--success-color);
         }
 
         .flash-messages li.error {
-            background-color: #dc3545;
+            background-color: var(--error-color);
         }
 
         /* Estilos para o formulário */
@@ -87,21 +143,23 @@
             margin-bottom: 8px;
             font-size: 0.95em;
             color: #555;
+            display: block;
         }
 
         input[type="text"],
         input[type="password"] {
             width: 100%;
             padding: 12px 40px 12px 15px;
-            border: 1px solid #ccc;
+            border: 1px solid var(--input-border-color);
             border-radius: 8px;
+            background-color: var(--input-bg-color);
             font-size: 1em;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
         }
 
         input[type="text"]:focus,
         input[type="password"]:focus {
-            border-color: #4a90e2;
+            border-color: var(--input-focus-border-color);
             box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
             outline: none;
         }
@@ -112,33 +170,46 @@
             top: 42px;
             right: 15px;
             color: #aaa;
-            transition: color 0.3s ease;
+            transition: color var(--transition-speed);
             cursor: pointer;
         }
 
         .input-group .fa:hover {
-            color: #4a90e2;
+            color: var(--primary-color);
         }
 
         /* Estilos dos botões */
         input[type="submit"] {
             width: 100%;
             padding: 14px 0;
-            background-color: #4a90e2;
+            background-color: var(--button-bg-color);
             color: white;
             border: none;
             border-radius: 8px;
             font-size: 1em;
             cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+            transition: background-color var(--transition-speed), transform 0.2s ease, box-shadow var(--transition-speed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        input[type="submit"] i {
+            margin-right: 8px;
         }
 
         input[type="submit"]:hover {
-            background-color: #357ABD;
+            background-color: var(--button-hover-bg-color);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
+        input[type="submit"]:active {
+            background-color: var(--button-active-bg-color);
+        }
+
+        /* Link de Esqueceu a Senha */
         p {
             margin-top: 20px;
             font-size: 0.95em;
@@ -147,9 +218,9 @@
 
         a {
             text-decoration: none;
-            color: #4a90e2;
+            color: var(--primary-color);
             font-weight: bold;
-            transition: color 0.3s ease;
+            transition: color var(--transition-speed);
         }
 
         a:hover {
@@ -181,12 +252,16 @@
             input[type="submit"] {
                 font-size: 0.95em;
             }
+
+            .input-group .fa {
+                top: 35px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Login</h2>
+        <h2><i class="fas fa-sign-in-alt"></i> Login</h2>
 
         <!-- Bloco para exibir as mensagens flash -->
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -203,13 +278,13 @@
             <div class="input-group">
                 <label for="username">Usuário:</label>
                 <input type="text" id="username" name="username" required placeholder="Digite seu usuário">
-                <i class="fas fa-user"></i>
+                <i class="fas fa-user" onclick="togglePasswordVisibility('username')"></i>
             </div>
 
             <div class="input-group">
                 <label for="password">Senha:</label>
                 <input type="password" id="password" name="password" required placeholder="Digite sua senha">
-                <i class="fas fa-lock"></i>
+                <i class="fas fa-eye" onclick="togglePasswordVisibility('password')"></i>
             </div>
 
             <input type="submit" value="Entrar">
@@ -217,9 +292,9 @@
 
     </div>
 
-    <!-- Script para Alternar Mostrar/Ocultar Senha (Opcional) -->
+    <!-- Script para Alternar Mostrar/Ocultar Senha -->
     <script>
-        function togglePassword(fieldId) {
+        function togglePasswordVisibility(fieldId) {
             const field = document.getElementById(fieldId);
             const toggleIcon = field.nextElementSibling;
             if (field.type === "password") {
