@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import time
 from flask import (
     Flask,
     flash,
@@ -16,16 +17,14 @@ from io import BytesIO
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
 
-# Caminho para salvar a imagem do frame
-frame_path = os.path.join(os.getcwd(), "current_frame.png")
-
+# Dicionário para manter o mapeamento dos frames atuais
+current_frames = {}
 
 # Função para conectar ao banco de dados
 def get_db_connection():
     conn = sqlite3.connect("users.db")
     conn.row_factory = sqlite3.Row
     return conn
-
 
 # Função para criar o banco de dados
 def create_database():
@@ -55,7 +54,6 @@ def create_database():
     conn.commit()
     conn.close()
 
-
 # Função para validar o login
 def check_login(username, password):
     conn = get_db_connection()
@@ -73,8 +71,7 @@ def check_login(username, password):
             return "blocked", None
     return None, None
 
-
-# Function to update password and display the new password
+# Função para atualizar a senha e exibir a nova senha
 def update_password(username, new_password):
     conn = get_db_connection()
     conn.execute(
@@ -89,7 +86,6 @@ def update_password(username, new_password):
         updated_password = user["password"]
         print(f"A nova senha para {username} é: {updated_password}")
 
-
 def add_user(username, password, localidade):
     conn = get_db_connection()
     try:
@@ -103,6 +99,18 @@ def add_user(username, password, localidade):
     conn.close()
     return True
 
+# Funções para gerenciar os frames atuais
+def update_current_frame_filename(localidade, filename):
+    old_filename = current_frames.get(localidade)
+    current_frames[localidade] = filename
+    # Remove o arquivo antigo, se existir
+    if old_filename and old_filename != filename:
+        old_frame_path = os.path.join(os.getcwd(), old_filename)
+        if os.path.exists(old_frame_path):
+            os.remove(old_frame_path)
+
+def get_current_frame_filename(localidade):
+    return current_frames.get(localidade)
 
 # Rota para login
 @app.route("/login", methods=["POST"])
@@ -126,26 +134,25 @@ def login():
         flash("Nome de usuário ou senha inválidos.", "error")
         return redirect(url_for("index"))
 
-
 # Rota para logout
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("index"))
 
-
 @app.route("/<localidade>/upload_frame", methods=["POST"])
 def upload_frame(localidade):
-    frame_path_local = os.path.join(
-        os.getcwd(), f"{localidade}_frame.png"
-    )  # Salva o frame com o nome baseado na localidade
-
     if "frame" in request.files:
         frame = request.files["frame"]
+        timestamp = int(time.time())
+        frame_filename = f"{localidade}_frame_{timestamp}.png"
+        frame_path_local = os.path.join(os.getcwd(), frame_filename)
         try:
-            # Salva a imagem recebida como 'localidade_frame.png'
+            # Salva a imagem recebida com o nome único
             frame.save(frame_path_local)
             print(f"Frame recebido e salvo com sucesso em {frame_path_local}.")
+            # Atualiza o nome do arquivo atual para esta localidade
+            update_current_frame_filename(localidade, frame_filename)
         except Exception as e:
             print(f"Erro ao salvar o frame: {e}")
             return "", 500
@@ -153,31 +160,43 @@ def upload_frame(localidade):
         print("Nenhum frame recebido.")
     return "", 204
 
-
 @app.route("/<localidade>/screen.png")
 def serve_pil_image(localidade):
-    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")
-    if os.path.exists(frame_path_local):
-        response = send_file(frame_path_local, mimetype="image/png")
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-        return response
+    frame_filename = get_current_frame_filename(localidade)
+    if frame_filename:
+        frame_path_local = os.path.join(os.getcwd(), frame_filename)
+        if os.path.exists(frame_path_local):
+            print(f"Servindo a imagem mais recente para {localidade}.")
+            response = send_file(frame_path_local, mimetype="image/png")
+            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            return response
+        else:
+            print(f"Arquivo de imagem não encontrado no caminho: {frame_path_local}")
+            return "", 404
     else:
+        print(f"Nenhum frame atual encontrado para {localidade}")
         return "", 404
 
+# Rota para obter o nome do frame atual
+@app.route("/<localidade>/current_frame")
+def get_current_frame(localidade):
+    filename = get_current_frame_filename(localidade)
+    if filename:
+        return jsonify({"filename": filename})
+    else:
+        return jsonify({}), 404
 
 # Rota pública para visualizar a tela (acessível externamente)
 @app.route("/tela")
 def tela():
     return render_template("tela.html")
 
-
 # Rota para renderizar a página de visualização de tela por localidade
 @app.route("/<localidade>/tela")
 def view_screen_by_region(localidade):
     return render_template("tela.html", localidade=localidade)
-
 
 @app.route("/<localidade>/tela-compartilhada")
 def share_screen(localidade):
@@ -193,9 +212,7 @@ def share_screen(localidade):
             share_link=share_link,
             username=username,
         )
-
     return redirect(url_for("index"))
-
 
 # Página de login
 @app.route("/")
@@ -206,14 +223,12 @@ def index():
         return redirect(url_for("share_screen", localidade=session["localidade"]))
     return render_template("login.html")
 
-
 # Rota para o painel do administrador
 @app.route("/admin_dashboard")
 def admin_dashboard():
     if "logged_in" in session and session["is_admin"]:
         return render_template("admin.html")
     return redirect(url_for("index"))
-
 
 @app.route("/admin/manage_users")
 def manage_users():
@@ -227,7 +242,6 @@ def manage_users():
     else:
         return redirect(url_for("index"))
 
-
 @app.route("/admin/delete_user/<int:user_id>", methods=["POST"])
 def delete_user(user_id):
     if "logged_in" in session and session["is_admin"]:
@@ -239,7 +253,6 @@ def delete_user(user_id):
         return redirect(url_for("manage_users"))
     else:
         return redirect(url_for("index"))
-
 
 @app.route("/admin/block_user/<int:user_id>", methods=["POST"])
 def block_user(user_id):
@@ -253,7 +266,6 @@ def block_user(user_id):
     else:
         return redirect(url_for("index"))
 
-
 @app.route("/admin/unblock_user/<int:user_id>", methods=["POST"])
 def unblock_user(user_id):
     if "logged_in" in session and session["is_admin"]:
@@ -265,7 +277,6 @@ def unblock_user(user_id):
         return redirect(url_for("manage_users"))
     else:
         return redirect(url_for("index"))
-
 
 @app.route("/admin/add_user", methods=["GET", "POST"])
 def add_new_user():
@@ -280,7 +291,8 @@ def add_new_user():
                 flash("Erro: Nome de usuário já existe!", "error")
             return redirect(url_for("admin_dashboard"))
         return render_template("add_user.html")
-
+    else:
+        return redirect(url_for("index"))
 
 @app.route("/change_password", methods=["GET", "POST"])
 def change_password():
@@ -297,30 +309,37 @@ def change_password():
             return redirect("/")
         else:
             return "Usuário não encontrado."
-
     return render_template("change_password.html")
-
 
 # Rota para limpar o cache de uma localidade específica
 @app.route("/<localidade>/clear_cache", methods=["POST"])
 def clear_cache(localidade):
-    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")
-    print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
-    print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
-    try:
-        if os.path.exists(frame_path_local):
-            os.remove(frame_path_local)
-            print("[clear_cache] Arquivo deletado com sucesso.")
-            return jsonify({"message": "Cache limpo com sucesso."}), 200
-        else:
-            print("[clear_cache] Arquivo não encontrado.")
-            return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
-    except Exception as e:
-        print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
-        return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
-
+    frame_filename = get_current_frame_filename(localidade)
+    if frame_filename:
+        frame_path_local = os.path.join(os.getcwd(), frame_filename)
+        print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
+        print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
+        try:
+            if os.path.exists(frame_path_local):
+                os.remove(frame_path_local)
+                print("[clear_cache] Arquivo deletado com sucesso.")
+                # Remove o frame atual do mapeamento
+                current_frames.pop(localidade, None)
+                return jsonify({"message": "Cache limpo com sucesso."}), 200
+            else:
+                print("[clear_cache] Arquivo não encontrado.")
+                # Remove o frame atual do mapeamento
+                current_frames.pop(localidade, None)
+                return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
+        except Exception as e:
+            print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
+            return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
+    else:
+        print(f"[clear_cache] Nenhum frame atual encontrado para {localidade}")
+        return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
 
 create_database()
+
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
