@@ -11,6 +11,7 @@ from flask import (
     send_file,
     jsonify,
 )
+from flask import Flask, render_template, request, redirect, session, url_for, send_file
 from io import BytesIO
 
 app = Flask(__name__)
@@ -18,6 +19,7 @@ app.secret_key = "sua_chave_secreta_aqui"
 
 # Caminho para salvar a imagem do frame
 frame_path = os.path.join(os.getcwd(), "current_frame.png")
+
 
 
 # Função para conectar ao banco de dados
@@ -38,19 +40,18 @@ def create_database():
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             localidade TEXT NOT NULL,
-            is_admin INTEGER DEFAULT 0,  -- 0 para usuários comuns, 1 para admin
-            is_active INTEGER DEFAULT 1  -- 1 para ativo, 0 para bloqueado
+            is_admin INTEGER DEFAULT 0  -- 0 para usuários comuns, 1 para admin
         )
-        """
+    """
     )
     cursor.execute(
         """
-        INSERT OR IGNORE INTO users (username, password, localidade, is_admin, is_active)
+        INSERT OR IGNORE INTO users (username, password, localidade, is_admin)
         VALUES
-        ('curitiba_user', 'senha_curitiba', 'curitiba', 0, 1),
-        ('sp_user', 'senha_sp', 'sp', 0, 1),
-        ('admin', 'admin', 'admin', 1, 1)
-        """
+        ('curitiba_user', 'senha_curitiba', 'curitiba', 0),
+        ('sp_user', 'senha_sp', 'sp', 0),
+        ('admin', 'admin', 'admin', 1)  -- Admin com valor 1
+    """
     )
     conn.commit()
     conn.close()
@@ -64,13 +65,7 @@ def check_login(username, password):
     ).fetchone()
     conn.close()
     if user:
-        if user["is_active"]:
-            return (
-                user["localidade"],
-                user["is_admin"],
-            )  # Retorna a localidade e se é admin
-        else:
-            return "blocked", None
+        return user["localidade"], user["is_admin"]  # Retorna a localidade e se é admin
     return None, None
 
 
@@ -87,14 +82,14 @@ def update_password(username, new_password):
     conn.close()
     if user:
         updated_password = user["password"]
-        print(f"A nova senha para {username} é: {updated_password}")
+        print(f"The new password for {username} is: {updated_password}")
 
 
 def add_user(username, password, localidade):
     conn = get_db_connection()
     try:
         conn.execute(
-            "INSERT INTO users (username, password, localidade, is_active) VALUES (?, ?, ?, 1)",
+            "INSERT INTO users (username, password, localidade) VALUES (?, ?, ?)",
             (username, password, localidade),
         )
         conn.commit()
@@ -110,10 +105,7 @@ def login():
     username = request.form["username"]
     password = request.form["password"]
     localidade, is_admin = check_login(username, password)
-    if localidade == "blocked":
-        flash("Seu acesso foi bloqueado pelo administrador.", "error")
-        return redirect(url_for("index"))
-    elif localidade:
+    if localidade:
         session["logged_in"] = True
         session["username"] = username
         session["localidade"] = localidade
@@ -122,10 +114,8 @@ def login():
             return redirect(url_for("admin_dashboard"))
         else:
             return redirect(url_for("share_screen", localidade=localidade))
-    else:
-        flash("Nome de usuário ou senha inválidos.", "error")
-        return redirect(url_for("index"))
 
+    return redirect(url_for("index"))
 
 # Rota para logout
 @app.route("/logout")
@@ -136,10 +126,8 @@ def logout():
 
 @app.route("/<localidade>/upload_frame", methods=["POST"])
 def upload_frame(localidade):
-    frame_path_local = os.path.join(
-        os.getcwd(), f"{localidade}_frame.png"
-    )  # Salva o frame com o nome baseado na localidade
-
+    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")  # Salva o frame com o nome baseado na localidade
+    
     if "frame" in request.files:
         frame = request.files["frame"]
         try:
@@ -154,12 +142,11 @@ def upload_frame(localidade):
     return "", 204
 
 
+
 @app.route("/<localidade>/screen.png")
 def serve_pil_image(localidade):
-    frame_path_local = os.path.join(
-        os.getcwd(), f"{localidade}_frame.png"
-    )  # Pega o frame específico da localidade
-
+    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")  # Pega o frame específico da localidade
+    
     if os.path.exists(frame_path_local):
         print(f"Servindo a imagem mais recente para {localidade}.")
         return send_file(frame_path_local, mimetype="image/png")
@@ -168,16 +155,20 @@ def serve_pil_image(localidade):
         return "", 404
 
 
+
 # Rota pública para visualizar a tela (acessível externamente)
 @app.route("/tela")
 def tela():
     return render_template("tela.html")
+
+# Rota para renderizar a página de compartilhamento de tela
 
 
 # Rota para renderizar a página de visualização de tela por localidade
 @app.route("/<localidade>/tela")
 def view_screen_by_region(localidade):
     return render_template("tela.html", localidade=localidade)
+
 
 
 @app.route("/<localidade>/tela-compartilhada")
@@ -189,10 +180,7 @@ def share_screen(localidade):
         )
         username = session.get("username")
         return render_template(
-            "tela_compartilhada.html",
-            localidade=localidade,
-            share_link=share_link,
-            username=username,
+            "tela_compartilhada.html", localidade=localidade, share_link=share_link, username=username
         )
 
     return redirect(url_for("index"))
@@ -208,7 +196,7 @@ def index():
     return render_template("login.html")
 
 
-# Rota para o painel do administrador
+# Rota para o painel do administrador (apenas como exemplo)
 @app.route("/admin_dashboard")
 def admin_dashboard():
     if "logged_in" in session and session["is_admin"]:
@@ -220,9 +208,7 @@ def admin_dashboard():
 def manage_users():
     if "logged_in" in session and session["is_admin"]:
         conn = get_db_connection()
-        users = conn.execute(
-            "SELECT * FROM users"
-        ).fetchall()  # Busca todos os usuários
+        users = conn.execute("SELECT * FROM users").fetchall()  # Fetch all users
         conn.close()
         return render_template("manage_users.html", users=users)
     else:
@@ -236,33 +222,7 @@ def delete_user(user_id):
         conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()
         conn.close()
-        flash("Usuário excluído com sucesso!", "success")
-        return redirect(url_for("manage_users"))
-    else:
-        return redirect(url_for("index"))
-
-
-@app.route("/admin/block_user/<int:user_id>", methods=["POST"])
-def block_user(user_id):
-    if "logged_in" in session and session["is_admin"]:
-        conn = get_db_connection()
-        conn.execute("UPDATE users SET is_active = 0 WHERE id = ?", (user_id,))
-        conn.commit()
-        conn.close()
-        flash("Usuário bloqueado com sucesso!", "success")
-        return redirect(url_for("manage_users"))
-    else:
-        return redirect(url_for("index"))
-
-
-@app.route("/admin/unblock_user/<int:user_id>", methods=["POST"])
-def unblock_user(user_id):
-    if "logged_in" in session and session["is_admin"]:
-        conn = get_db_connection()
-        conn.execute("UPDATE users SET is_active = 1 WHERE id = ?", (user_id,))
-        conn.commit()
-        conn.close()
-        flash("Usuário desbloqueado com sucesso!", "success")
+        flash("User successfully deleted!", "success")
         return redirect(url_for("manage_users"))
     else:
         return redirect(url_for("index"))
@@ -276,9 +236,9 @@ def add_new_user():
             password = request.form["password"]
             localidade = request.form["localidade"]
             if add_user(username, password, localidade):
-                flash("Usuário adicionado com sucesso!", "success")
+                flash("User successfully added!", "success")
             else:
-                flash("Erro: Nome de usuário já existe!", "error")
+                flash("Error: Username already exists!", "error")
             return redirect(url_for("admin_dashboard"))
         return render_template("add_user.html")
 
@@ -297,33 +257,23 @@ def change_password():
             update_password(username, new_password)
             return redirect("/")
         else:
-            return "Usuário não encontrado."
+            return "User not found."
 
     return render_template("change_password.html")
 
-
-# Rota para limpar o cache de uma localidade específica
-@app.route("/<localidade>/clear_cache", methods=["POST"])
-def clear_cache(localidade):
-    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")
+@app.route("/clear_cache", methods=["POST"])
+def clear_cache():
     try:
-        if os.path.exists(frame_path_local):
-            os.remove(frame_path_local)
+        if os.path.exists(frame_path):
+            os.remove(frame_path)
             return jsonify({"message": "Cache limpo com sucesso."}), 200
         else:
-            return (
-                jsonify(
-                    {
-                        "message": "Nenhum cache encontrado para a localidade especificada."
-                    }
-                ),
-                404,
-            )
+            return jsonify({"message": "Nenhum cache encontrado."}), 404
     except Exception as e:
         return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
-
-
+    
 create_database()
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
+
     app.run(host="0.0.0.0", port=5000, debug=True)

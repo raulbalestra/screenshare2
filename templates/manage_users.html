@@ -49,47 +49,16 @@
 
         .button {
             padding: 8px 16px;
-            background-color: #dc3545; /* Vermelho */
+            background-color: #dc3545;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             transition: background-color 0.3s ease;
-            margin-right: 5px;
         }
 
         .button:hover {
             background-color: #c82333;
-        }
-
-        .block-button {
-            padding: 8px 16px;
-            background-color: #ffc107; /* Amarelo */
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-right: 5px;
-        }
-
-        .block-button:hover {
-            background-color: #e0a800;
-        }
-
-        .unblock-button {
-            padding: 8px 16px;
-            background-color: #28a745; /* Verde */
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-right: 5px;
-        }
-
-        .unblock-button:hover {
-            background-color: #218838;
         }
 
         .back-button {
@@ -118,7 +87,7 @@
 <body>
 
     <div class="container">
-        <h2>Gerenciar Usuários</h2>
+        <h2>Usuários Ativos</h2>
 
         <table>
             <thead>
@@ -126,8 +95,7 @@
                     <th>ID</th>
                     <th>Nome de Usuário</th>
                     <th>Localidade</th>
-                    <th>Status</th>
-                    <th>Ações</th>
+                    <th>Ação</th>
                 </tr>
             </thead>
             <tbody>
@@ -136,24 +104,10 @@
                     <td>{{ user.id }}</td>
                     <td>{{ user.username }}</td>
                     <td>{{ user.localidade }}</td>
-                    <td>{{ 'Ativo' if user.is_active else 'Bloqueado' }}</td>
                     <td>
-                        {% if not user.is_admin %}
-                            <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" style="display:inline;">
-                                <button type="submit" class="button">Excluir</button>
-                            </form>
-                            {% if user.is_active %}
-                                <form action="{{ url_for('block_user', user_id=user.id) }}" method="POST" style="display:inline;">
-                                    <button type="submit" class="block-button">Bloquear</button>
-                                </form>
-                            {% else %}
-                                <form action="{{ url_for('unblock_user', user_id=user.id) }}" method="POST" style="display:inline;">
-                                    <button type="submit" class="unblock-button">Desbloquear</button>
-                                </form>
-                            {% endif %}
-                        {% else %}
-                            <span>N/A</span>
-                        {% endif %}
+                        <form action="/admin/delete_user/{{ user.id }}" method="POST">
+                            <button type="submit" class="button">Excluir</button>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}
