@@ -36,61 +36,43 @@
 
     let updateInterval;
 
-    function getCurrentFrameFilename(callback) {
-      fetch(`/${localidade}/current_frame`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.filename) {
-            callback(data.filename);
-          } else {
-            handleNoTransmission();
-          }
-        })
-        .catch(error => {
-          console.error("Erro ao obter o nome do frame atual:", error);
-          handleNoTransmission();
-        });
-    }
-
     function checkForTransmission() {
-      getCurrentFrameFilename(function(filename) {
-        const imageUrl = `/${localidade}/${filename}?timestamp=${new Date().getTime()}`;
+      // URL da imagem com timestamp para evitar cache
+      const imageUrl = `/${localidade}/screen.png?timestamp=${new Date().getTime()}`;
 
-        // Cria um novo objeto Image para verificar se a imagem existe
-        const img = new Image();
-        img.onload = function () {
-          // Se a imagem carregar com sucesso, exibe a imagem e esconde a mensagem
-          screenImage.src = imageUrl;
-          screenImage.style.display = "block";
-          messageDiv.style.display = "none";
-          // Inicia a atualização periódica da tela
-          startUpdatingScreen();
-        };
-        img.onerror = function () {
-          // Se a imagem não existir, exibe a mensagem e esconde a imagem
-          handleNoTransmission();
-        };
-        img.src = imageUrl;
-      });
+      // Cria um novo objeto Image para verificar se a imagem existe
+      const img = new Image();
+      img.onload = function () {
+        // Se a imagem carregar com sucesso, exibe a imagem e esconde a mensagem
+        screenImage.src = imageUrl;
+        screenImage.style.display = "block";
+        messageDiv.style.display = "none";
+        // Inicia a atualização periódica da tela
+        startUpdatingScreen();
+      };
+      img.onerror = function () {
+        // Se a imagem não existir, exibe a mensagem e esconde a imagem
+        handleNoTransmission();
+      };
+      img.src = imageUrl;
     }
 
     function updateScreen() {
-      getCurrentFrameFilename(function(filename) {
-        const imageUrl = `/${localidade}/${filename}?timestamp=${new Date().getTime()}`;
+      // Gera a URL correta com a localidade e evita cache
+      const imageUrl = `/${localidade}/screen.png?timestamp=${new Date().getTime()}`;
 
-        screenImage.onload = function() {
-          // Imagem carregada com sucesso, nada a fazer
-          screenImage.style.display = "block";
-          messageDiv.style.display = "none";
-        };
+      screenImage.onload = function() {
+        // Imagem carregada com sucesso, nada a fazer
+        screenImage.style.display = "block";
+        messageDiv.style.display = "none";
+      };
 
-        screenImage.onerror = function() {
-          // Se a imagem não carregar, exibe a mensagem e esconde a imagem
-          handleNoTransmission();
-        };
+      screenImage.onerror = function() {
+        // Se a imagem não carregar, exibe a mensagem e esconde a imagem
+        handleNoTransmission();
+      };
 
-        screenImage.src = imageUrl;
-      });
+      screenImage.src = imageUrl;
     }
 
     function startUpdatingScreen() {
