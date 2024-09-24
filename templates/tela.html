@@ -37,7 +37,7 @@
     let updateInterval;
 
     function checkForTransmission() {
-      // URL da imagem com timestamp para evitar cache
+      // URL da imagem
       const imageUrl = `/${localidade}/screen.png?timestamp=${new Date().getTime()}`;
 
       // Cria um novo objeto Image para verificar se a imagem existe
@@ -52,24 +52,36 @@
       };
       img.onerror = function () {
         // Se a imagem não existir, exibe a mensagem e esconde a imagem
-        handleNoTransmission();
+        screenImage.style.display = "none";
+        messageDiv.style.display = "block";
+        messageDiv.textContent = "A transmissão não começou ainda.";
+        // Limpa o intervalo de atualização, pois a transmissão foi interrompida
+        if (updateInterval) {
+          clearInterval(updateInterval);
+          updateInterval = null;
+        }
       };
       img.src = imageUrl;
     }
 
     function updateScreen() {
       // Gera a URL correta com a localidade e evita cache
-      const imageUrl = `/${localidade}/screen.png?timestamp=${new Date().getTime()}`;
+      const imageUrl = `/${localidade}/screen.png?random=` + new Date().getTime();
 
       screenImage.onload = function() {
         // Imagem carregada com sucesso, nada a fazer
-        screenImage.style.display = "block";
-        messageDiv.style.display = "none";
       };
 
       screenImage.onerror = function() {
         // Se a imagem não carregar, exibe a mensagem e esconde a imagem
-        handleNoTransmission();
+        screenImage.style.display = "none";
+        messageDiv.style.display = "block";
+        messageDiv.textContent = "A transmissão não começou ainda.";
+        // Limpa o intervalo de atualização, pois a transmissão foi interrompida
+        if (updateInterval) {
+          clearInterval(updateInterval);
+          updateInterval = null;
+        }
       };
 
       screenImage.src = imageUrl;
@@ -80,17 +92,6 @@
       if (updateInterval) return;
       // Atualiza a tela a cada 1 segundo
       updateInterval = setInterval(updateScreen, 1000);
-    }
-
-    function handleNoTransmission() {
-      screenImage.style.display = "none";
-      messageDiv.style.display = "block";
-      messageDiv.textContent = "A transmissão não começou ainda.";
-      // Limpa o intervalo de atualização, pois a transmissão foi interrompida
-      if (updateInterval) {
-        clearInterval(updateInterval);
-        updateInterval = null;
-      }
     }
 
     // Verifica inicialmente se a transmissão já começou
