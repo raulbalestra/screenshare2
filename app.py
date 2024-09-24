@@ -158,14 +158,12 @@ def upload_frame(localidade):
 def serve_pil_image(localidade):
     frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")
     if os.path.exists(frame_path_local):
-        print(f"Servindo a imagem mais recente para {localidade}.")
         response = send_file(frame_path_local, mimetype="image/png")
         response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
         return response
     else:
-        print(f"Arquivo de imagem não encontrado no caminho: {frame_path_local}")
         return "", 404
 
 
