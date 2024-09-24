@@ -1,6 +1,5 @@
 import os
 import sqlite3
-import time
 from flask import (
     Flask,
     flash,
@@ -16,9 +15,6 @@ from io import BytesIO
 
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
-
-# Dicionário para manter o mapeamento dos frames atuais
-current_frames = {}
 
 # Função para conectar ao banco de dados
 def get_db_connection():
@@ -99,19 +95,6 @@ def add_user(username, password, localidade):
     conn.close()
     return True
 
-# Funções para gerenciar os frames atuais
-def update_current_frame_filename(localidade, filename):
-    old_filename = current_frames.get(localidade)
-    current_frames[localidade] = filename
-    # Remove o arquivo antigo, se existir
-    if old_filename and old_filename != filename:
-        old_frame_path = os.path.join(os.getcwd(), old_filename)
-        if os.path.exists(old_frame_path):
-            os.remove(old_frame_path)
-
-def get_current_frame_filename(localidade):
-    return current_frames.get(localidade)
-
 # Rota para login
 @app.route("/login", methods=["POST"])
 def login():
@@ -142,17 +125,14 @@ def logout():
 
 @app.route("/<localidade>/upload_frame", methods=["POST"])
 def upload_frame(localidade):
+    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_screen.png")  # Nome fixo para cada localidade
+
     if "frame" in request.files:
         frame = request.files["frame"]
-        timestamp = int(time.time())
-        frame_filename = f"{localidade}_frame_{timestamp}.png"
-        frame_path_local = os.path.join(os.getcwd(), frame_filename)
         try:
-            # Salva a imagem recebida com o nome único
+            # Salva a imagem recebida como 'localidade_screen.png'
             frame.save(frame_path_local)
             print(f"Frame recebido e salvo com sucesso em {frame_path_local}.")
-            # Atualiza o nome do arquivo atual para esta localidade
-            update_current_frame_filename(localidade, frame_filename)
         except Exception as e:
             print(f"Erro ao salvar o frame: {e}")
             return "", 500
@@ -162,31 +142,17 @@ def upload_frame(localidade):
 
 @app.route("/<localidade>/screen.png")
 def serve_pil_image(localidade):
-    frame_filename = get_current_frame_filename(localidade)
-    if frame_filename:
-        frame_path_local = os.path.join(os.getcwd(), frame_filename)
-        if os.path.exists(frame_path_local):
-            print(f"Servindo a imagem mais recente para {localidade}.")
-            response = send_file(frame_path_local, mimetype="image/png")
-            response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
-            response.headers['Pragma'] = 'no-cache'
-            response.headers['Expires'] = '0'
-            return response
-        else:
-            print(f"Arquivo de imagem não encontrado no caminho: {frame_path_local}")
-            return "", 404
+    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_screen.png")
+    if os.path.exists(frame_path_local):
+        print(f"Servindo a imagem mais recente para {localidade}.")
+        response = send_file(frame_path_local, mimetype="image/png")
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
     else:
-        print(f"Nenhum frame atual encontrado para {localidade}")
+        print(f"Arquivo de imagem não encontrado no caminho: {frame_path_local}")
         return "", 404
-
-# Rota para obter o nome do frame atual
-@app.route("/<localidade>/current_frame")
-def get_current_frame(localidade):
-    filename = get_current_frame_filename(localidade)
-    if filename:
-        return jsonify({"filename": filename})
-    else:
-        return jsonify({}), 404
 
 # Rota pública para visualizar a tela (acessível externamente)
 @app.route("/tela")
@@ -314,29 +280,20 @@ def change_password():
 # Rota para limpar o cache de uma localidade específica
 @app.route("/<localidade>/clear_cache", methods=["POST"])
 def clear_cache(localidade):
-    frame_filename = get_current_frame_filename(localidade)
-    if frame_filename:
-        frame_path_local = os.path.join(os.getcwd(), frame_filename)
-        print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
-        print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
-        try:
-            if os.path.exists(frame_path_local):
-                os.remove(frame_path_local)
-                print("[clear_cache] Arquivo deletado com sucesso.")
-                # Remove o frame atual do mapeamento
-                current_frames.pop(localidade, None)
-                return jsonify({"message": "Cache limpo com sucesso."}), 200
-            else:
-                print("[clear_cache] Arquivo não encontrado.")
-                # Remove o frame atual do mapeamento
-                current_frames.pop(localidade, None)
-                return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
-        except Exception as e:
-            print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
-            return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
-    else:
-        print(f"[clear_cache] Nenhum frame atual encontrado para {localidade}")
-        return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
+    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_screen.png")
+    print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
+    print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
+    try:
+        if os.path.exists(frame_path_local):
+            os.remove(frame_path_local)
+            print("[clear_cache] Arquivo deletado com sucesso.")
+            return jsonify({"message": "Cache limpo com sucesso."}), 200
+        else:
+            print("[clear_cache] Arquivo não encontrado.")
+            return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
+    except Exception as e:
+        print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
+        return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
 
 create_database()
 
