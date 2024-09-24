@@ -1,92 +1,279 @@
+<!-- templates/add_user.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adicionar Usuário</title>
+    <title>Adicionar Novo Usuário</title>
+    <!-- Importando uma fonte moderna do Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Importando Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f7f6;
+        /* Reset básico */
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #6B73FF 0%, #000DFF 100%);
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-        }
-        .container {
-            width: 100%;
-            max-width: 400px;
-            background-color: #fff;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            text-align: center;
-        }
-        h1 {
+            min-height: 100vh;
             color: #333;
-            margin-bottom: 20px;
-            font-size: 24px;
+            padding: 20px;
         }
+
+        /* Container principal */
+        .container {
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 40px 30px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+            animation: fadeIn 0.6s ease-in-out;
+            position: relative;
+        }
+
+        h2 {
+            margin-bottom: 30px;
+            color: #4a90e2;
+            font-size: 2em;
+            font-weight: 500;
+        }
+
+        /* Estilos para mensagens flash */
+        .flash-messages {
+            margin-bottom: 20px;
+            list-style: none;
+            padding: 0;
+        }
+
+        .flash-messages li {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            color: #fff;
+            animation: slideDown 0.5s ease-in-out;
+        }
+
+        .flash-messages li.success {
+            background-color: #28a745;
+        }
+
+        .flash-messages li.error {
+            background-color: #dc3545;
+        }
+
+        /* Estilos para o formulário */
         form {
             display: flex;
             flex-direction: column;
+            gap: 20px;
+            position: relative;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        label {
+            text-align: left;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="password"] {
             width: 100%;
-        }
-        input {
-            padding: 12px;
-            margin: 10px 0;
-            font-size: 16px;
+            padding: 12px 40px 12px 15px;
             border: 1px solid #ccc;
-            border-radius: 5px;
-            box-sizing: border-box;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
-        input:focus {
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #4a90e2;
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
             outline: none;
-            border-color: #007bff;
-            box-shadow: 0 0 5px rgba(0, 123, 255, 0.2);
         }
+
+        /* Ícones dentro dos campos de entrada */
+        .input-group .fa {
+            position: absolute;
+            top: 42px;
+            right: 15px;
+            color: #aaa;
+            transition: color 0.3s ease;
+            cursor: pointer;
+            font-size: 1.2em;
+        }
+
+        .input-group .fa:hover {
+            color: #4a90e2;
+        }
+
+        /* Estilos dos botões */
         button {
-            padding: 12px;
+            width: 100%;
+            padding: 14px 0;
             background-color: #28a745;
             color: white;
-            font-size: 16px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 500;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
         }
+
         button:hover {
             background-color: #218838;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
-        .back-button {
+
+        /* Link para voltar */
+        a.back-link {
             display: inline-block;
-            margin-top: 15px;
-            padding: 12px 20px;
-            background-color: #007bff;
-            color: white;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #6c757d;
+            color: #fff;
             text-decoration: none;
-            border-radius: 5px;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border-radius: 50px;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
         }
-        .back-button:hover {
-            background-color: #0056b3;
+
+        a.back-link:hover {
+            background-color: #5a6268;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Responsividade */
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+                width: 90%;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+
+            button, a.back-link {
+                font-size: 0.95em;
+                padding: 12px 0;
+            }
+
+            .input-group .fa {
+                top: 38px;
+                font-size: 1em;
+            }
+        }
+
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Estilos para as mensagens de alerta */
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 1em;
+        }
+
+        .alert.success {
+            background-color: #28a745;
+            color: #fff;
+        }
+
+        .alert.error {
+            background-color: #dc3545;
+            color: #fff;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Adicionar Usuário</h1>
-        <form action="/admin/add_user" method="POST">
-            <input type="text" name="username" placeholder="Nome de usuário" required>
-            <input type="password" name="password" placeholder="Senha" required>
-            <input type="text" name="localidade" placeholder="Localidade" required>
-            <button type="submit">Adicionar</button>
+        <h2>Adicionar Novo Usuário</h2>
+
+        <!-- Bloco para exibir as mensagens flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flash-messages">
+              {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/add_user">
+            <div class="input-group">
+                <label for="username">Nome de Usuário:</label>
+                <input type="text" id="username" name="username" required placeholder="Digite o nome de usuário">
+                <i class="fas fa-user"></i>
+            </div>
+
+            <div class="input-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" name="password" required placeholder="Digite a senha">
+                <i class="fas fa-lock toggle-password" onclick="togglePasswordVisibility(event)"></i>
+            </div>
+
+            <div class="input-group">
+                <label for="localidade">Localidade:</label>
+                <!-- Substituição do dropdown por um campo de entrada -->
+                <input type="text" id="localidade" name="localidade" required placeholder="Digite a região do usuário">
+                <i class="fas fa-map-marker-alt"></i>
+            </div>
+
+            <button type="submit">Adicionar Usuário</button>
         </form>
-        <a href="/" class="back-button">Voltar</a><!-- Botão de Voltar -->
+        <a href="{{ url_for('admin_dashboard') }}" class="back-link">Voltar para o Painel de Administração</a>
     </div>
+
+    <!-- Script para Mostrar/Ocultar Senha -->
+    <script>
+        function togglePasswordVisibility(event) {
+            const icon = event.target;
+            const input = icon.previousElementSibling;
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove('fa-lock');
+                icon.classList.add('fa-lock-open');
+            } else {
+                input.type = "password";
+                icon.classList.remove('fa-lock-open');
+                icon.classList.add('fa-lock');
+            }
+        }
+
+        // Adiciona eventos de clique aos ícones de senha
+        document.querySelectorAll('.toggle-password').forEach(icon => {
+            icon.addEventListener('click', togglePasswordVisibility);
+        });
+    </script>
 </body>
 </html>

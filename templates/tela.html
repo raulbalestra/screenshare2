@@ -1,42 +1,153 @@
+<!-- templates/visualizacao_da_tela.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualização da Tela</title>
+    <!-- Importando uma fonte moderna do Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Importando Font Awesome para ícones (opcional) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        body {
+        /* Reset básico */
+        * {
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+            padding: 20px;
+        }
+
+        h2 {
+            margin-bottom: 30px;
+            color: #4a90e2;
+            font-size: 2em;
+            font-weight: 500;
+        }
+
+        /* Container principal */
+        .container {
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 40px 30px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            max-width: 900px;
+            width: 100%;
             text-align: center;
+            animation: fadeIn 0.6s ease-in-out;
+            position: relative;
         }
 
+        /* Estilos para mensagens */
+        .message {
+            margin-top: 20px;
+            font-size: 1.2em;
+            color: #555;
+        }
+
+        /* Estilos para a imagem da tela */
         #screen {
-            max-width: 100%;
+            width: 100%;
+            max-width: 800px;
             height: auto;
+            background-color: #000;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
         }
 
+        #screen:hover {
+            transform: scale(1.02);
+        }
+
+        /* Estilos para a mensagem de espera */
         #message {
             margin-top: 50px;
-            font-size: 24px;
+            font-size: 1.5em;
             color: #555;
+            animation: slideDown 0.5s ease-in-out;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+
+            #message {
+                font-size: 1.2em;
+            }
+        }
+
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Botão de Logout estilizado */
+        .logout-btn {
+            margin-top: 30px;
+            padding: 12px 24px;
+            background-color: #dc3545;
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
     </style>
 </head>
 <body>
-    <h2>Visualização da Tela - {{ localidade|default('') }}</h2>
-    <img id="screen" src="" alt="Transmissão da Tela" style="display: none;">
-    <div id="message">Aguardando o início da transmissão...</div>
+    <div class="container">
+        <h2>Visualização da Tela - {{ localidade|capitalize }}</h2>
+        <img id="screen" src="" alt="Transmissão da Tela" style="display: none;">
+        <div id="message">Aguardando o início da transmissão...</div>
+    </div>
 
     <script>
-        const localidade = "{{ localidade|default('') }}";  // Pega a localidade passada pelo servidor
+        // Define a rota base para servir as imagens manualmente
+        const baseImageUrl = "/serve_pil_image/"; // Define manualmente a base URL
+
+        // Obtém a localidade passada pelo servidor
+        const localidade = "{{ localidade|default('') }}";  
         const screenImage = document.getElementById('screen');
         const messageDiv = document.getElementById('message');
 
         function checkForTransmission() {
-            // URL da imagem
-            const imageUrl = `/${localidade}/screen.png?timestamp=${new Date().getTime()}`;
+            if (!localidade) {
+                messageDiv.textContent = "Localidade não especificada.";
+                return;
+            }
+
+            // Gera a URL completa da imagem
+            const imageUrl = baseImageUrl + localidade + "/screen.png?timestamp=" + new Date().getTime();
 
             // Cria um novo objeto Image para verificar se a imagem existe
             const img = new Image();
@@ -58,8 +169,11 @@
         }
 
         function updateScreen() {
+            if (!localidade) return;
+
             // Gera a URL correta com a localidade e evita cache
-            screenImage.src = `/${localidade}/screen.png?random=` + new Date().getTime(); 
+            const imageUrl = baseImageUrl + localidade + "/screen.png?random=" + new Date().getTime();
+            screenImage.src = imageUrl; 
         }
 
         let updateInterval;

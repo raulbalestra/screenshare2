@@ -8,15 +8,20 @@ from flask import (
     redirect,
     session,
     url_for,
-    send_file,
+    send_from_directory,
+    abort,
     jsonify,
 )
-from io import BytesIO
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
 
-# Caminho para salvar a imagem do frame
+# Diretório base para armazenar as imagens das localidades
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+IMAGE_DIR = os.path.join(BASE_DIR, 'static', 'images')
+
+# Caminho para salvar a imagem do frame (não mais necessário, mas mantido para referência)
 frame_path = os.path.join(os.getcwd(), "current_frame.png")
 
 
@@ -47,11 +52,15 @@ def create_database():
         """
         INSERT OR IGNORE INTO users (username, password, localidade, is_admin, is_active)
         VALUES
-        ('curitiba_user', 'senha_curitiba', 'curitiba', 0, 1),
-        ('sp_user', 'senha_sp', 'sp', 0, 1),
-        ('admin', 'admin', 'admin', 1, 1)
+        ('curitiba_user', ?, 'curitiba', 0, 1),
+        ('sp_user', ?, 'sp', 0, 1),
+        ('admin', ?, 'admin', 1, 1)
         """
-    )
+    , (
+        generate_password_hash('senha_curitiba'),
+        generate_password_hash('senha_sp'),
+        generate_password_hash('admin')
+    ))
     conn.commit()
     conn.close()
 
@@ -60,10 +69,10 @@ def create_database():
 def check_login(username, password):
     conn = get_db_connection()
     user = conn.execute(
-        "SELECT * FROM users WHERE username = ? AND password = ?", (username, password)
+        "SELECT * FROM users WHERE username = ?", (username,)
     ).fetchone()
     conn.close()
-    if user:
+    if user and check_password_hash(user["password"], password):
         if user["is_active"]:
             return (
                 user["localidade"],
@@ -74,34 +83,33 @@ def check_login(username, password):
     return None, None
 
 
-# Function to update password and display the new password
-def update_password(username, new_password):
-    conn = get_db_connection()
-    conn.execute(
-        "UPDATE users SET password = ? WHERE username = ?", (new_password, username)
-    )
-    conn.commit()
-    user = conn.execute(
-        "SELECT password FROM users WHERE username = ?", (username,)
-    ).fetchone()
-    conn.close()
-    if user:
-        updated_password = user["password"]
-        print(f"A nova senha para {username} é: {updated_password}")
-
-
+# Função para adicionar um usuário
 def add_user(username, password, localidade):
     conn = get_db_connection()
     try:
+        hashed_password = generate_password_hash(password)
         conn.execute(
             "INSERT INTO users (username, password, localidade, is_active) VALUES (?, ?, ?, 1)",
-            (username, password, localidade),
+            (username, hashed_password, localidade),
         )
         conn.commit()
     except sqlite3.IntegrityError:
         return False  # Retorna False se o usuário já existe
     conn.close()
     return True
+
+
+# Função para garantir que a pasta da localidade exista
+def ensure_localidade_directory(localidade):
+    local_dir = os.path.join(IMAGE_DIR, localidade.lower())
+    if not os.path.isdir(local_dir):
+        os.makedirs(local_dir)
+        # Opcional: Criar um arquivo placeholder para screen.png
+        placeholder_path = os.path.join(local_dir, 'screen.png')
+        if not os.path.isfile(placeholder_path):
+            with open(placeholder_path, 'wb') as f:
+                pass  # Cria um arquivo vazio ou adicione uma imagem padrão
+    return local_dir
 
 
 # Rota para login
@@ -134,38 +142,55 @@ def logout():
     return redirect(url_for("index"))
 
 
+# Rota para upload do frame
 @app.route("/<localidade>/upload_frame", methods=["POST"])
 def upload_frame(localidade):
-    frame_path_local = os.path.join(
-        os.getcwd(), f"{localidade}_frame.png"
-    )  # Salva o frame com o nome baseado na localidade
-
-    if "frame" in request.files:
-        frame = request.files["frame"]
-        try:
-            # Salva a imagem recebida como 'localidade_frame.png'
-            frame.save(frame_path_local)
-            print(f"Frame recebido e salvo com sucesso em {frame_path_local}.")
-        except Exception as e:
-            print(f"Erro ao salvar o frame: {e}")
-            return "", 500
+    if "logged_in" in session and session.get("localidade") == localidade:
+        # Define o caminho correto para salvar a imagem na pasta da localidade
+        local_dir = ensure_localidade_directory(localidade)
+        frame_path_local = os.path.join(local_dir, "screen.png")
+        if "frame" in request.files:
+            frame = request.files["frame"]
+            try:
+                frame.save(frame_path_local)
+                print(f"Frame recebido e salvo com sucesso em {frame_path_local}.")
+            except Exception as e:
+                print(f"Erro ao salvar o frame: {e}")
+                return "", 500
+        else:
+            print("Nenhum frame recebido.")
+        return "", 204
     else:
-        print("Nenhum frame recebido.")
-    return "", 204
+        flash("Acesso não autorizado.", "error")
+        return redirect(url_for("index"))
 
 
-@app.route("/<localidade>/screen.png")
+# Rota para servir a imagem do frame
+@app.route("/serve_pil_image/<localidade>/screen.png")
 def serve_pil_image(localidade):
-    frame_path_local = os.path.join(
-        os.getcwd(), f"{localidade}_frame.png"
-    )  # Pega o frame específico da localidade
-
-    if os.path.exists(frame_path_local):
-        print(f"Servindo a imagem mais recente para {localidade}.")
-        return send_file(frame_path_local, mimetype="image/png")
-    else:
-        print(f"Arquivo de imagem não encontrado no caminho: {frame_path_local}")
-        return "", 404
+    # Caminho para a pasta da localidade
+    local_dir = os.path.join(IMAGE_DIR, localidade.lower())
+    
+    # Verifica se a pasta da localidade existe
+    if not os.path.isdir(local_dir):
+        print(f"Pasta da localidade não encontrada: {local_dir}")
+        abort(404, description="Localidade não encontrada.")
+    
+    # Caminho completo para o arquivo screen.png
+    image_path = os.path.join(local_dir, "screen.png")
+    
+    # Verifica se o arquivo screen.png existe
+    if not os.path.isfile(image_path):
+        print(f"Arquivo de imagem não encontrado no caminho: {image_path}")
+        abort(404, description="Imagem não encontrada.")
+    
+    print(f"Servindo a imagem mais recente para {localidade}.")
+    response = send_from_directory(local_dir, "screen.png", mimetype="image/png")
+    # Cabeçalhos para evitar cache
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 # Rota pública para visualizar a tela (acessível externamente)
@@ -180,6 +205,7 @@ def view_screen_by_region(localidade):
     return render_template("tela.html", localidade=localidade)
 
 
+# Rota para compartilhar a tela
 @app.route("/<localidade>/tela-compartilhada")
 def share_screen(localidade):
     if "logged_in" in session and session.get("localidade") == localidade:
@@ -194,8 +220,9 @@ def share_screen(localidade):
             share_link=share_link,
             username=username,
         )
-
-    return redirect(url_for("index"))
+    else:
+        flash("Acesso não autorizado.", "error")
+        return redirect(url_for("index"))
 
 
 # Página de login
@@ -216,6 +243,7 @@ def admin_dashboard():
     return redirect(url_for("index"))
 
 
+# Rota para gerenciar usuários
 @app.route("/admin/manage_users")
 def manage_users():
     if "logged_in" in session and session["is_admin"]:
@@ -226,9 +254,11 @@ def manage_users():
         conn.close()
         return render_template("manage_users.html", users=users)
     else:
+        flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
 
+# Rota para deletar usuário
 @app.route("/admin/delete_user/<int:user_id>", methods=["POST"])
 def delete_user(user_id):
     if "logged_in" in session and session["is_admin"]:
@@ -239,9 +269,11 @@ def delete_user(user_id):
         flash("Usuário excluído com sucesso!", "success")
         return redirect(url_for("manage_users"))
     else:
+        flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
 
+# Rota para bloquear usuário
 @app.route("/admin/block_user/<int:user_id>", methods=["POST"])
 def block_user(user_id):
     if "logged_in" in session and session["is_admin"]:
@@ -252,9 +284,11 @@ def block_user(user_id):
         flash("Usuário bloqueado com sucesso!", "success")
         return redirect(url_for("manage_users"))
     else:
+        flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
 
+# Rota para desbloquear usuário
 @app.route("/admin/unblock_user/<int:user_id>", methods=["POST"])
 def unblock_user(user_id):
     if "logged_in" in session and session["is_admin"]:
@@ -265,65 +299,147 @@ def unblock_user(user_id):
         flash("Usuário desbloqueado com sucesso!", "success")
         return redirect(url_for("manage_users"))
     else:
+        flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
 
+# Rota para adicionar um novo usuário
 @app.route("/admin/add_user", methods=["GET", "POST"])
 def add_new_user():
     if "logged_in" in session and session["is_admin"]:
         if request.method == "POST":
             username = request.form["username"]
             password = request.form["password"]
-            localidade = request.form["localidade"]
+            localidade = request.form["localidade"].strip().lower()
             if add_user(username, password, localidade):
+                # Garantir que a pasta para a localidade exista
+                ensure_localidade_directory(localidade)
                 flash("Usuário adicionado com sucesso!", "success")
             else:
                 flash("Erro: Nome de usuário já existe!", "error")
-            return redirect(url_for("admin_dashboard"))
+            return redirect(url_for("manage_users"))
         return render_template("add_user.html")
+    else:
+        flash("Acesso não autorizado.", "error")
+        return redirect(url_for("index"))
 
 
+# Rota para o administrador alterar a senha de um usuário
+@app.route("/admin/change_password/<int:user_id>", methods=["GET", "POST"])
+def admin_change_password(user_id):
+    if "logged_in" in session and session.get("is_admin"):
+        conn = get_db_connection()
+        user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not user:
+            conn.close()
+            flash("Usuário não encontrado.", "error")
+            return redirect(url_for("manage_users"))
+        
+        if request.method == "POST":
+            new_password = request.form["new_password"]
+            confirm_password = request.form["confirm_password"]
+            
+            if not new_password or not confirm_password:
+                flash("Ambos os campos de senha são obrigatórios.", "error")
+                conn.close()
+                return redirect(url_for("admin_change_password", user_id=user_id))
+            
+            if new_password != confirm_password:
+                flash("As senhas não coincidem.", "error")
+                conn.close()
+                return redirect(url_for("admin_change_password", user_id=user_id))
+            
+            try:
+                hashed_password = generate_password_hash(new_password)
+                conn.execute(
+                    "UPDATE users SET password = ? WHERE id = ?", (hashed_password, user_id)
+                )
+                conn.commit()
+                conn.close()
+                flash(f"Senha do usuário {user['username']} atualizada com sucesso.", "success")
+                return redirect(url_for("manage_users"))
+            except Exception as e:
+                conn.close()
+                flash(f"Erro ao atualizar a senha: {str(e)}", "error")
+                return redirect(url_for("admin_change_password", user_id=user_id))
+        else:
+            conn.close()
+            return render_template("admin_change_password.html", user=user)
+    else:
+        flash("Acesso não autorizado.", "error")
+        return redirect(url_for("index"))
+
+
+# Rota para o usuário alterar sua própria senha
 @app.route("/change_password", methods=["GET", "POST"])
 def change_password():
-    if request.method == "POST":
-        username = request.form["username"]
-        new_password = request.form["new_password"]
-        conn = get_db_connection()
-        user = conn.execute(
-            "SELECT * FROM users WHERE username = ?", (username,)
-        ).fetchone()
-        conn.close()
-        if user:
-            update_password(username, new_password)
-            return redirect("/")
-        else:
-            return "Usuário não encontrado."
-
+    if "logged_in" in session:
+        username = session.get("username")
+        if request.method == "POST":
+            new_password = request.form["new_password"]
+            confirm_password = request.form["confirm_password"]
+            
+            if not new_password or not confirm_password:
+                flash("Ambos os campos de senha são obrigatórios.", "error")
+                return redirect(url_for("change_password"))
+            
+            if new_password != confirm_password:
+                flash("As senhas não coincidem.", "error")
+                return redirect(url_for("change_password"))
+            
+            conn = get_db_connection()
+            user = conn.execute(
+                "SELECT * FROM users WHERE username = ?", (username,)
+            ).fetchone()
+            if user:
+                try:
+                    hashed_password = generate_password_hash(new_password)
+                    conn.execute(
+                        "UPDATE users SET password = ? WHERE username = ?", (hashed_password, username)
+                    )
+                    conn.commit()
+                    conn.close()
+                    flash("Senha atualizada com sucesso.", "success")
+                    return redirect("/")
+                except Exception as e:
+                    conn.close()
+                    flash(f"Erro ao atualizar a senha: {str(e)}", "error")
+                    return redirect(url_for("change_password"))
+            else:
+                conn.close()
+                flash("Usuário não encontrado.", "error")
+                return redirect(url_for("change_password"))
+    else:
+        flash("Acesso não autorizado.", "error")
+        return redirect(url_for("index"))
+    
     return render_template("change_password.html")
 
 
 # Rota para limpar o cache de uma localidade específica
 @app.route("/<localidade>/clear_cache", methods=["POST"])
 def clear_cache(localidade):
-    frame_path_local = os.path.join(os.getcwd(), f"{localidade}_frame.png")
+    # Caminho para o arquivo screen.png da localidade
+    local_dir = os.path.join(IMAGE_DIR, localidade.lower())
+    frame_path_local = os.path.join(local_dir, "screen.png")
+    print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
+    print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
     try:
         if os.path.exists(frame_path_local):
             os.remove(frame_path_local)
+            print("[clear_cache] Arquivo deletado com sucesso.")
             return jsonify({"message": "Cache limpo com sucesso."}), 200
         else:
-            return (
-                jsonify(
-                    {
-                        "message": "Nenhum cache encontrado para a localidade especificada."
-                    }
-                ),
-                404,
-            )
+            print("[clear_cache] Arquivo não encontrado.")
+            return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
     except Exception as e:
+        print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
         return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
 
 
+# Inicializar o banco de dados antes de servir qualquer rota
 create_database()
+
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

@@ -1,10 +1,16 @@
+<!-- templates/login.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
+    <!-- Importando uma fonte moderna do Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Importando Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
+        /* Reset básico */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -12,128 +18,168 @@
         }
 
         body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f0f2f5;
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #6B73FF 0%, #000DFF 100%);
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            color: #333;
         }
 
         .container {
             background-color: #fff;
             border-radius: 12px;
-            padding: 40px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-            width: 320px;
+            padding: 40px 30px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
             text-align: center;
-            transition: box-shadow 0.3s ease;
-        }
-
-        .container:hover {
-            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+            animation: fadeIn 0.6s ease-in-out;
+            position: relative;
         }
 
         h2 {
-            margin-bottom: 24px;
-            color: #333;
-            font-size: 24px;
-            font-weight: 600;
+            margin-bottom: 30px;
+            color: #4a90e2;
+            font-size: 1.8em;
+            font-weight: 500;
+        }
+
+        /* Estilos para mensagens flash */
+        .flash-messages {
+            margin-bottom: 20px;
+            list-style: none;
+            padding: 0;
+        }
+
+        .flash-messages li {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            color: #fff;
+            animation: slideDown 0.5s ease-in-out;
+        }
+
+        .flash-messages li.success {
+            background-color: #28a745;
+        }
+
+        .flash-messages li.error {
+            background-color: #dc3545;
+        }
+
+        /* Estilos para o formulário */
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            position: relative;
+        }
+
+        .input-group {
+            position: relative;
         }
 
         label {
-            font-size: 14px;
-            font-weight: bold;
-            display: block;
             text-align: left;
+            font-weight: 500;
             margin-bottom: 8px;
+            font-size: 0.95em;
             color: #555;
         }
 
         input[type="text"],
         input[type="password"] {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 16px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
+            padding: 12px 40px 12px 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 1em;
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         input[type="text"]:focus,
         input[type="password"]:focus {
-            border-color: #4CAF50;
-            box-shadow: 0 0 8px rgba(76, 175, 80, 0.2);
+            border-color: #4a90e2;
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
             outline: none;
         }
 
+        /* Ícones dentro dos campos de entrada */
+        .input-group .fa {
+            position: absolute;
+            top: 42px;
+            right: 15px;
+            color: #aaa;
+            transition: color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .input-group .fa:hover {
+            color: #4a90e2;
+        }
+
+        /* Estilos dos botões */
         input[type="submit"] {
             width: 100%;
-            padding: 12px;
-            background-color: #4CAF50;
+            padding: 14px 0;
+            background-color: #4a90e2;
             color: white;
             border: none;
-            border-radius: 6px;
-            font-size: 16px;
+            border-radius: 8px;
+            font-size: 1em;
             cursor: pointer;
-            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
         }
 
         input[type="submit"]:hover {
-            background-color: #45a049;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #357ABD;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         }
 
         p {
-            margin-top: 12px;
-            font-size: 14px;
+            margin-top: 20px;
+            font-size: 0.95em;
             color: #555;
         }
 
         a {
             text-decoration: none;
-            color: #4CAF50;
+            color: #4a90e2;
             font-weight: bold;
             transition: color 0.3s ease;
         }
 
         a:hover {
-            color: #45a049;
+            color: #357ABD;
         }
 
-        /* Estilos para as mensagens de alerta */
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 6px;
-            text-align: center;
-            font-size: 14px;
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
 
-        .alert.success {
-            background-color: #dff0d8;
-            color: #3c763d;
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .alert.error {
-            background-color: #f2dede;
-            color: #a94442;
-        }
-
-        /* Adicionando responsividade */
-        @media (max-width: 400px) {
+        /* Responsividade */
+        @media (max-width: 480px) {
             .container {
+                padding: 30px 20px;
                 width: 90%;
-                padding: 30px;
             }
 
             h2 {
-                font-size: 20px;
+                font-size: 1.5em;
             }
 
             input[type="submit"] {
-                font-size: 14px;
+                font-size: 0.95em;
             }
         }
     </style>
@@ -145,24 +191,47 @@
         <!-- Bloco para exibir as mensagens flash -->
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
-            {% for category, message in messages %}
-              <div class="alert {{ category }}">{{ message }}</div>
-            {% endfor %}
+            <ul class="flash-messages">
+              {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+              {% endfor %}
+            </ul>
           {% endif %}
         {% endwith %}
 
         <form method="POST" action="/login">
-            <label for="username">Usuário:</label>
-            <input type="text" id="username" name="username" required>
+            <div class="input-group">
+                <label for="username">Usuário:</label>
+                <input type="text" id="username" name="username" required placeholder="Digite seu usuário">
+                <i class="fas fa-user"></i>
+            </div>
 
-            <label for="password">Senha:</label>
-            <input type="password" id="password" name="password" required>
+            <div class="input-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" name="password" required placeholder="Digite sua senha">
+                <i class="fas fa-lock"></i>
+            </div>
 
             <input type="submit" value="Entrar">
         </form>
-        <p>
-            <a href="/change_password">Esqueceu a senha?</a>
-        </p>
+
     </div>
+
+    <!-- Script para Alternar Mostrar/Ocultar Senha (Opcional) -->
+    <script>
+        function togglePassword(fieldId) {
+            const field = document.getElementById(fieldId);
+            const toggleIcon = field.nextElementSibling;
+            if (field.type === "password") {
+                field.type = "text";
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                field.type = "password";
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+    </script>
 </body>
 </html>

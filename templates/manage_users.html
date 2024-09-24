@@ -1,131 +1,212 @@
+<!-- templates/manage_users.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Usuários</title>
     <style>
-       body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f7f6;
+        /* Importando uma fonte moderna do Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+        /* Reset básico */
+        * {
             margin: 0;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f6f9;
+            padding: 40px 20px;
+            color: #333;
         }
 
         h2 {
-            color: #333;
-            margin-bottom: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+            color: #4a90e2;
         }
 
+        /* Container principal */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        /* Estilos para mensagens flash */
+        .flash-messages {
+            margin-bottom: 20px;
+            list-style: none;
+            padding: 0;
+        }
+
+        .flash-messages li {
+            padding: 15px 20px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            color: #fff;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .flash-messages li.success {
+            background-color: #28a745;
+        }
+
+        .flash-messages li.error {
+            background-color: #dc3545;
+        }
+
+        /* Tabela estilizada */
         table {
             width: 100%;
-            max-width: 900px;
             border-collapse: collapse;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            background-color: white;
-            border-radius: 8px;
+            background-color: #fff;
+            border-radius: 10px;
             overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        table, th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
-            text-align: center;
+        th, td {
+            padding: 15px 20px;
+            text-align: left;
         }
 
-        th {
-            background-color: #007bff;
-            color: white;
-            font-weight: bold;
+        thead {
+            background-color: #4a90e2;
+            color: #fff;
         }
 
-        td {
-            background-color: #f9f9f9;
-        }
-
-        .button {
-            padding: 8px 16px;
-            background-color: #dc3545; /* Vermelho */
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
+        tbody tr {
+            border-bottom: 1px solid #e0e0e0;
             transition: background-color 0.3s ease;
-            margin-right: 5px;
         }
 
-        .button:hover {
-            background-color: #c82333;
+        tbody tr:last-child {
+            border-bottom: none;
         }
 
-        .block-button {
+        tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* Estilos para os botões de ação */
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .actions a,
+        .actions button {
             padding: 8px 16px;
-            background-color: #ffc107; /* Amarelo */
-            color: white;
             border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-right: 5px;
-        }
-
-        .block-button:hover {
-            background-color: #e0a800;
-        }
-
-        .unblock-button {
-            padding: 8px 16px;
-            background-color: #28a745; /* Verde */
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-right: 5px;
-        }
-
-        .unblock-button:hover {
-            background-color: #218838;
-        }
-
-        .back-button {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
             border-radius: 5px;
             text-decoration: none;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
 
-        .back-button:hover {
-            background-color: #0056b3;
+        .actions a.change-password-btn {
+            background-color: #17a2b8;
         }
 
-        .container {
-            width: 100%;
-            max-width: 900px;
-            margin: 0 auto;
+        .actions a.change-password-btn:hover {
+            background-color: #138496;
+            transform: translateY(-2px);
+        }
+
+        .actions button.delete-btn {
+            background-color: #dc3545;
+        }
+
+        .actions button.delete-btn:hover {
+            background-color: #c82333;
+            transform: translateY(-2px);
+        }
+
+        .actions button.block-btn {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .actions button.block-btn:hover {
+            background-color: #e0a800;
+            transform: translateY(-2px);
+        }
+
+        .actions button.unblock-btn {
+            background-color: #28a745;
+        }
+
+        .actions button.unblock-btn:hover {
+            background-color: #218838;
+            transform: translateY(-2px);
+        }
+
+        /* Link para adicionar novo usuário */
+        .add-user-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #4a90e2;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .add-user-link:hover {
+            background-color: #357ABD;
+            transform: translateY(-2px);
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            th, td {
+                padding: 10px 15px;
+            }
+
+            .actions {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .actions a,
+            .actions button {
+                width: 100%;
+                text-align: center;
+            }
+        }
+
+        /* Animação de fade in para mensagens */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
-
     <div class="container">
         <h2>Gerenciar Usuários</h2>
-
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flash-messages">
+              {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
         <table>
             <thead>
                 <tr>
                     <th>ID</th>
                     <th>Nome de Usuário</th>
                     <th>Localidade</th>
+                    <th>Admin</th>
                     <th>Status</th>
                     <th>Ações</th>
                 </tr>
@@ -136,32 +217,30 @@
                     <td>{{ user.id }}</td>
                     <td>{{ user.username }}</td>
                     <td>{{ user.localidade }}</td>
+                    <td>{{ 'Sim' if user.is_admin else 'Não' }}</td>
                     <td>{{ 'Ativo' if user.is_active else 'Bloqueado' }}</td>
-                    <td>
+                    <td class="actions">
                         {% if not user.is_admin %}
-                            <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" style="display:inline;">
-                                <button type="submit" class="button">Excluir</button>
+                            <a href="{{ url_for('admin_change_password', user_id=user.id) }}" class="change-password-btn">Alterar Senha</a>
+                        {% endif %}
+                        <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="delete-btn" onclick="return confirm('Tem certeza que deseja excluir este usuário?');">Excluir</button>
+                        </form>
+                        {% if user.is_active %}
+                            <form action="{{ url_for('block_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                                <button type="submit" class="block-btn" onclick="return confirm('Tem certeza que deseja bloquear este usuário?');">Bloquear</button>
                             </form>
-                            {% if user.is_active %}
-                                <form action="{{ url_for('block_user', user_id=user.id) }}" method="POST" style="display:inline;">
-                                    <button type="submit" class="block-button">Bloquear</button>
-                                </form>
-                            {% else %}
-                                <form action="{{ url_for('unblock_user', user_id=user.id) }}" method="POST" style="display:inline;">
-                                    <button type="submit" class="unblock-button">Desbloquear</button>
-                                </form>
-                            {% endif %}
                         {% else %}
-                            <span>N/A</span>
+                            <form action="{{ url_for('unblock_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                                <button type="submit" class="unblock-btn" onclick="return confirm('Tem certeza que deseja desbloquear este usuário?');">Desbloquear</button>
+                            </form>
                         {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-
-        <a href="/admin_dashboard" class="back-button">Voltar ao Painel do Administrador</a>
+        <a href="{{ url_for('add_new_user') }}" class="add-user-link">Adicionar Novo Usuário</a>
     </div>
-
 </body>
 </html>

@@ -1,248 +1,325 @@
+<!-- templates/tela_compartilhada.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <head>
+<head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Compartilhar Tela</title>
+    <!-- Importando uma fonte moderna do Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-      body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 100vh;
-        background-color: #f0f0f0;
-        position: relative;
-      }
+        /* Reset básico */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-      .container {
-        text-align: center;
-        background-color: #fff;
-        padding: 30px;
-        border-radius: 10px;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        max-width: 800px;
-        width: 100%;
-      }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            position: relative;
+            color: #333;
+        }
 
-      h2 {
-        color: #333;
-        margin-bottom: 20px;
-        font-size: 24px;
-      }
+        /* Container principal */
+        .container {
+            background-color: #fff;
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            animation: fadeIn 0.5s ease-in-out;
+        }
 
-      video {
-        width: 100%;
-        max-width: 720px;
-        height: auto;
-        background-color: #000;
-        border-radius: 8px;
-        margin-bottom: 20px;
-      }
+        h2 {
+            color: #4a90e2;
+            margin-bottom: 25px;
+            font-size: 1.8em;
+            font-weight: 500;
+        }
 
-      .controls {
-        display: flex;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
+        /* Vídeo de compartilhamento */
+        video {
+            width: 100%;
+            max-width: 800px;
+            height: auto;
+            background-color: #000;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            transition: transform 0.3s ease;
+        }
 
-      button {
-        padding: 12px 20px;
-        font-size: 16px;
-        cursor: pointer;
-        border: none;
-        border-radius: 5px;
-        background-color: #4caf50;
-        color: white;
-        transition: background-color 0.3s ease, box-shadow 0.3s ease;
-      }
+        video:hover {
+            transform: scale(1.02);
+        }
 
-      button:hover {
-        background-color: #45a049;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-      }
+        /* Controles de botões */
+        .controls {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
 
-      button:disabled {
-        background-color: #ccc;
-        cursor: not-allowed;
-      }
+        /* Estilos dos botões */
+        .controls button {
+            padding: 14px 28px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 50px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            color: #fff;
+            min-width: 150px;
+        }
 
-      button.logout {
-        background-color: #dc3545;
-      }
+        /* Botão Iniciar Compartilhamento */
+        #shareButton {
+            background-color: #28a745;
+        }
 
-      button.logout:hover {
-        background-color: #c82333;
-      }
+        #shareButton:hover {
+            background-color: #218838;
+            transform: translateY(-3px);
+        }
 
-      /* Campo de link de compartilhamento fixo na parte inferior */
-      .share-link-container {
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        background-color: #fff;
-        padding: 15px;
-        border-top: 1px solid #ddd;
-        box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.1);
-        z-index: 1000;
-        /* Certifique-se de que está acima de outros elementos */
-      }
+        /* Botão Parar Compartilhamento */
+        #stopButton {
+            background-color: #dc3545;
+        }
 
-      .share-link-container input {
-        flex-grow: 1;
-        max-width: 600px;
-        padding: 10px;
-        font-size: 14px;
-        border: 1px solid #ccc;
-        border-radius: 5px;
-        margin-right: 10px;
-      }
+        #stopButton:hover {
+            background-color: #c82333;
+            transform: translateY(-3px);
+        }
 
-      .copy-btn {
-        background-color: #007bff;
-        color: white;
-        padding: 10px 20px;
-        border: none;
-        cursor: pointer;
-        border-radius: 5px;
-        font-size: 14px;
-      }
+        /* Botão Logout */
+        #logoutButton {
+            background-color: #6c757d;
+        }
 
-      .copy-btn:hover {
-        background-color: #0056b3;
-      }
+        #logoutButton:hover {
+            background-color: #5a6268;
+            transform: translateY(-3px);
+        }
+
+        /* Campo de link de compartilhamento fixo na parte inferior */
+        .share-link-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #fff;
+            padding: 15px 20px;
+            border-radius: 30px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-width: 90%;
+            width: auto;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .share-link-container input {
+            flex-grow: 1;
+            padding: 10px 15px;
+            font-size: 1em;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            margin-right: 15px;
+            transition: border-color 0.3s ease;
+        }
+
+        .share-link-container input:focus {
+            border-color: #4a90e2;
+            outline: none;
+        }
+
+        .copy-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 22px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+
+        .copy-btn:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .controls button {
+                width: 100%;
+                min-width: unset;
+            }
+
+            .share-link-container {
+                flex-direction: column;
+                gap: 10px;
+                bottom: 10px;
+                padding: 10px 15px;
+            }
+
+            .share-link-container input {
+                margin-right: 0;
+                width: 100%;
+            }
+
+            .copy-btn {
+                width: 100%;
+            }
+        }
+
+        /* Animações suaves */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
-  </head>
-
-  <body>
-    <img id="screen" />
+</head>
+<body>
     <div class="container">
-      <h2>Compartilhar Tela para {{ localidade }}</h2>
-      <video id="screenVideo" autoplay muted></video>
-      <div class="controls">
-        <button id="shareButton" onclick="startScreenShare()">
-          Iniciar Compartilhamento
-        </button>
-        <button id="stopButton" onclick="stopScreenShare()" disabled>
-          Parar Compartilhamento
-        </button>
-        <button
-          id="logoutButton"
-          class="logout"
-          onclick="window.location.href='/logout'"
-        >
-          Logout
-        </button>
-      </div>
+        <h2>Compartilhar Tela para {{ localidade|capitalize }}</h2>
+        <video id="screenVideo" autoplay muted></video>
+        <div class="controls">
+            <button id="shareButton" onclick="startScreenShare()">Iniciar Compartilhamento</button>
+            <button id="stopButton" onclick="stopScreenShare()" disabled>Parar Compartilhamento</button>
+            <button id="logoutButton" onclick="window.location.href='/logout'">Logout</button>
+        </div>
     </div>
 
     <!-- Campo de link de compartilhamento fixo na parte inferior -->
     <div class="share-link-container">
-      <input
-        type="text"
-        id="shareLink"
-        readonly
-        value="https://screenshare2-3.onrender.com/{{ localidade }}/tela"
-      />
-      <button class="copy-btn" onclick="copyLink()">Copiar</button>
+        <input type="text" id="shareLink" readonly />
+        <button class="copy-btn" onclick="copyLink()">Copiar</button>
     </div>
 
     <script>
-      let screenStream;
-      let captureInterval;
-      const localidade = "{{ localidade }}"; // Pega a localidade da sessão
+        let screenStream;
+        let captureInterval;
+        const localidade = "{{ localidade }}"; // Pega a localidade da sessão
 
-      document.getElementById(
-        "shareLink"
-      ).value = `https://screenshare2-3.onrender.com/${localidade}/tela`;
+        // Atualiza o link de compartilhamento dinamicamente usando window.location.origin
+        const shareLinkInput = document.getElementById("shareLink");
+        shareLinkInput.value = `${window.location.origin}/${localidade}/tela`;
 
-      async function startScreenShare() {
-        try {
-          screenStream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
-          });
-          const videoElement = document.getElementById("screenVideo");
-          videoElement.srcObject = screenStream;
-          document.getElementById("shareButton").disabled = true;
-          document.getElementById("stopButton").disabled = false;
-          captureAndSendFrames();
-        } catch (err) {
-          console.error("Erro ao compartilhar a tela: ", err);
-        }
-      }
-
-      function captureAndSendFrames() {
-        const videoElement = document.getElementById("screenVideo");
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        const localidade = "{{ localidade }}"; // Pegue a localidade da sessão
-
-        captureInterval = setInterval(() => {
-          canvas.width = videoElement.videoWidth;
-          canvas.height = videoElement.videoHeight;
-
-          // Desenha o frame atual do vídeo no canvas
-          context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-          // Converte o conteúdo do canvas para um blob e envia para o servidor
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const formData = new FormData();
-              formData.append("frame", blob, "frame.png");
-              // Envia o frame atual para o endpoint '/<localidade>/upload_frame'
-              fetch(`/${localidade}/upload_frame`, {
-                method: "POST",
-                body: formData,
-              })
-                .then((response) => {
-                  if (response.ok) {
-                    console.log("Frame enviado com sucesso");
-                  } else {
-                    console.error("Erro ao enviar frame");
-                  }
-                })
-                .catch((error) => {
-                  console.error("Erro de conexão ao enviar frame:", error);
-                });
+        async function startScreenShare() {
+            if (!localidade) {
+                alert("Localidade não especificada.");
+                return;
             }
-          }, "image/png");
-        }, 1000); // Captura a cada 1 segundo
-      }
 
-      function stopScreenShare() {
-        clearInterval(captureInterval);
-        if (screenStream) {
-          let tracks = screenStream.getTracks();
-          tracks.forEach((track) => track.stop());
+            try {
+                screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: true,
+                });
+                const videoElement = document.getElementById("screenVideo");
+                videoElement.srcObject = screenStream;
+                document.getElementById("shareButton").disabled = true;
+                document.getElementById("stopButton").disabled = false;
+                captureAndSendFrames();
+            } catch (err) {
+                console.error("Erro ao compartilhar a tela: ", err);
+                alert("Falha ao iniciar o compartilhamento de tela. Por favor, tente novamente.");
+            }
         }
-        const videoElement = document.getElementById("screenVideo");
-        videoElement.srcObject = null;
-        document.getElementById("shareButton").disabled = false;
-        document.getElementById("stopButton").disabled = true;
-        console.log("Compartilhamento de tela parado.");
-        fetch(`/${localidade}/clear_cache`, {
-          method: "POST",
-        })
-          .then((response) => response.json())
-          .then((data) => console.log(data.message))
-          .catch((error) => console.error("Erro ao limpar o cache:", error));
-      }
 
-      function copyLink() {
-        const shareLink = document.getElementById("shareLink");
-        shareLink.select();
-        shareLink.setSelectionRange(0, 99999); // Para dispositivos móveis
-        document.execCommand("copy");
-        alert("Link copiado: " + shareLink.value);
-      }
+        function captureAndSendFrames() {
+            const videoElement = document.getElementById("screenVideo");
+            const canvas = document.createElement("canvas");
+            const context = canvas.getContext("2d");
+
+            captureInterval = setInterval(() => {
+                if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+                    // Evita erros se o vídeo ainda não estiver carregado
+                    return;
+                }
+
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+
+                // Desenha o frame atual do vídeo no canvas
+                context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+
+                // Converte o conteúdo do canvas para um blob e envia para o servidor
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const formData = new FormData();
+                        formData.append("frame", blob, "screen.png");
+                        // Envia o frame atual para o endpoint '/<localidade>/upload_frame'
+                        fetch(`/${localidade}/upload_frame`, {
+                            method: "POST",
+                            body: formData,
+                        })
+                        .then((response) => {
+                            if (response.ok) {
+                                console.log("Frame enviado com sucesso");
+                            } else {
+                                console.error("Erro ao enviar frame");
+                            }
+                        })
+                        .catch((error) => {
+                            console.error("Erro de conexão ao enviar frame:", error);
+                        });
+                    }
+                }, "image/png");
+            }, 1000); // Captura a cada 1 segundo
+        }
+
+        function stopScreenShare() {
+            clearInterval(captureInterval);
+            if (screenStream) {
+                let tracks = screenStream.getTracks();
+                tracks.forEach((track) => track.stop());
+            }
+            const videoElement = document.getElementById("screenVideo");
+            videoElement.srcObject = null;
+            document.getElementById("shareButton").disabled = false;
+            document.getElementById("stopButton").disabled = true;
+            console.log("Compartilhamento de tela parado.");
+            fetch(`/${localidade}/clear_cache`, {
+                method: "POST",
+            })
+            .then((response) => response.json())
+            .then((data) => console.log(data.message))
+            .catch((error) => console.error("Erro ao limpar o cache:", error));
+        }
+
+        function copyLink() {
+            const shareLink = document.getElementById("shareLink");
+            shareLink.select();
+            shareLink.setSelectionRange(0, 99999); // Para dispositivos móveis
+
+            navigator.clipboard.writeText(shareLink.value)
+            .then(() => {
+                alert("Link copiado: " + shareLink.value);
+            })
+            .catch(err => {
+                console.error('Erro ao copiar o link:', err);
+                alert("Não foi possível copiar o link automaticamente. Por favor, copie manualmente.");
+            });
+        }
     </script>
-  </body>
+</body>
 </html>
