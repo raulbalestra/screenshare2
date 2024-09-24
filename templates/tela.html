@@ -1,41 +1,81 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualizar Tela Compartilhada</title>
+    <title>Visualização da Tela</title>
     <style>
         body {
             margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #000;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            text-align: center;
         }
 
-        img {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
+        #screen {
+            max-width: 100%;
+            height: auto;
+        }
+
+        #message {
+            margin-top: 50px;
+            font-size: 24px;
+            color: #555;
         }
     </style>
 </head>
 <body>
-    <!-- O elemento img irá carregar a captura de tela específica da localidade -->
-    <img id="screen" src="/{{ localidade }}/screen.png" alt="Captura de Tela">
+    <h2>Visualização da Tela - {{ localidade|default('') }}</h2>
+    <img id="screen" src="" alt="Transmissão da Tela" style="display: none;">
+    <div id="message">Aguardando o início da transmissão...</div>
 
     <script>
-        // Defina a variável localidade usando o valor passado pelo Flask
-        const localidade = "{{ localidade }}";  // Isso vai inserir a localidade vinda do backend
+        const localidade = "{{ localidade|default('') }}";  // Pega a localidade passada pelo servidor
+        const screenImage = document.getElementById('screen');
+        const messageDiv = document.getElementById('message');
 
-        function updateScreen() {
-            const screenElement = document.getElementById('screen');
-            // Gera a URL correta com a localidade e evita cache
-            screenElement.src = `/${localidade}/screen.png?random=` + new Date().getTime(); 
+        function checkForTransmission() {
+            // URL da imagem
+            const imageUrl = `/${localidade}/screen.png?timestamp=${new Date().getTime()}`;
+
+            // Cria um novo objeto Image para verificar se a imagem existe
+            const img = new Image();
+            img.onload = function() {
+                // Se a imagem carregar com sucesso, exibe a imagem e esconde a mensagem
+                screenImage.src = imageUrl;
+                screenImage.style.display = 'block';
+                messageDiv.style.display = 'none';
+                // Inicia a atualização periódica da tela
+                startUpdatingScreen();
+            }
+            img.onerror = function() {
+                // Se a imagem não existir, exibe a mensagem e esconde a imagem
+                screenImage.style.display = 'none';
+                messageDiv.style.display = 'block';
+                messageDiv.textContent = "A transmissão não começou ainda.";
+            }
+            img.src = imageUrl;
         }
 
-        setInterval(updateScreen, 1000); // Atualiza a cada 1 segundo
+        function updateScreen() {
+            // Gera a URL correta com a localidade e evita cache
+            screenImage.src = `/${localidade}/screen.png?random=` + new Date().getTime(); 
+        }
+
+        let updateInterval;
+
+        function startUpdatingScreen() {
+            // Se o intervalo já estiver definido, não faz nada
+            if (updateInterval) return;
+            // Atualiza a tela a cada 1 segundo
+            updateInterval = setInterval(updateScreen, 1000);
+        }
+
+        // Verifica inicialmente se a transmissão já começou
+        checkForTransmission();
+
+        // Verifica a cada 5 segundos se a transmissão começou
+        setInterval(checkForTransmission, 5000);
     </script>
 </body>
 </html>
