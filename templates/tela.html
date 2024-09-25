@@ -1,4 +1,3 @@
-<!-- templates/visualizacao_da_tela.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
@@ -7,25 +6,20 @@
     <title>Visualização da Tela</title>
     <!-- Importando uma fonte moderna do Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Importando Font Awesome para ícones (opcional) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Importando Font Awesome para ícones (sem o atributo de integridade) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         /* Variáveis de Cores */
         :root {
             --primary-color: #4a90e2;
             --secondary-color: #f4f6f9;
-            --accent-color: #28a745;
-            --error-color: #dc3545;
-            --success-color: #28a745;
             --text-color: #333333;
             --background-color: #ffffff;
             --button-bg-color: #dc3545;
             --button-hover-bg-color: #c82333;
-            --box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
             --transition-speed: 0.3s;
             --border-radius: 15px;
             --font-family: 'Roboto', sans-serif;
-            --gradient-overlay: rgba(0, 0, 0, 0.2);
         }
 
         /* Reset básico */
@@ -41,164 +35,49 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            justify-content: center;
             min-height: 100vh;
             color: var(--text-color);
-            padding: 20px;
-            position: relative;
+            margin: 0;
             overflow: hidden;
         }
 
         h2 {
-            margin-bottom: 30px;
             color: var(--primary-color);
-            font-size: 2em;
-            font-weight: 500;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        h2 i {
-            margin-right: 10px;
-            color: var(--primary-color);
-            animation: rotateIcon 4s linear infinite;
-        }
-
-        @keyframes rotateIcon {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Container principal */
-        .container {
-            background-color: var(--background-color);
-            border-radius: var(--border-radius);
-            padding: 40px 30px;
-            box-shadow: var(--box-shadow);
-            max-width: 900px;
-            width: 100%;
+            font-size: 1.5em;
             text-align: center;
-            animation: fadeIn 0.6s ease-in-out;
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Elemento Decorativo com Pseudo-elemento */
-        .container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
-            opacity: 0.05;
-            border-radius: var(--border-radius);
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        /* Estilos para mensagens */
-        .message {
-            margin-top: 20px;
-            font-size: 1.2em;
-            color: #555;
-            animation: slideDown 0.5s ease-in-out;
+            margin-bottom: 20px;
         }
 
         /* Estilos para a imagem da tela */
         #screen {
-            width: 100%;
-            max-width: 800px;
-            height: auto;
+            width: 100vw;
+            height: 100vh;
+            object-fit: cover; /* Cobre toda a área da tela sem distorção */
             background-color: #000;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
-            margin: 0 auto;
-        }
-
-        #screen:hover {
-            transform: scale(1.02);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-        }
-
-        /* Estilos para a mensagem de espera */
-        #message {
-            margin-top: 50px;
-            font-size: 1.5em;
-            color: #555;
-            animation: slideDown 0.5s ease-in-out;
         }
 
         /* Responsividade */
         @media (max-width: 768px) {
-            .container {
-                padding: 30px 20px;
-            }
-
-            h2 {
-                font-size: 1.5em;
-            }
-
-            #message {
-                font-size: 1.2em;
+            #screen {
+                height: 100vh;
+                object-fit: contain; /* Ajusta a imagem dentro da tela sem cortar */
             }
         }
 
-        /* Animações */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
+        /* Estilos para a mensagem de espera */
+        #message {
+            margin-top: 20px;
+            font-size: 1.5em;
+            color: #555;
         }
 
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Botão de Logout estilizado */
-        .logout-btn {
-            margin-top: 30px;
-            padding: 12px 24px;
-            background-color: var(--button-bg-color);
-            color: #fff;
-            border: none;
-            border-radius: 50px;
-            font-size: 1em;
-            cursor: pointer;
-            transition: background-color var(--transition-speed), transform 0.2s ease, box-shadow var(--transition-speed);
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-            text-decoration: none;
-        }
-
-        .logout-btn i {
-            margin-right: 8px;
-        }
-
-        .logout-btn:hover {
-            background-color: var(--button-hover-bg-color);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        .logout-btn:active {
-            background-color: var(--button-hover-bg-color);
-            transform: translateY(0);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2><i class="fas fa-tv"></i> Visualização da Tela - {{ localidade|capitalize }}</h2>
-        <img id="screen" src="" alt="Transmissão da Tela" style="display: none;">
-        <div id="message">Aguardando o início da transmissão...</div>
-    </div>
+    <h2>Painel de Filas- {{ localidade|capitalize }}</h2>
+    <img id="screen" src="" alt="Transmissão da Tela">
+    <div id="message">Aguardando o início da transmissão...</div>
 
     <script>
         // Define a rota base para servir as imagens manualmente

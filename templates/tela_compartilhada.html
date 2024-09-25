@@ -1,12 +1,14 @@
-<!-- templates/tela_compartilhada.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Compartilhar Tela</title>
-    <!-- Importando uma fonte moderna do Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+     <!-- Importando uma fonte moderna do Google Fonts -->
+     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    
+     <!-- Importando o Font Awesome com o hash correto ou sem o atributo de integridade -->
+     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         /* Reset básico */
         * {
@@ -70,21 +72,16 @@
             margin-bottom: 25px;
         }
 
-        /* Estilos dos botões */
-        .controls button {
-            padding: 14px 28px;
-            font-size: 1em;
-            cursor: pointer;
-            border: none;
-            border-radius: 50px;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-            color: #fff;
-            min-width: 150px;
-        }
-
         /* Botão Iniciar Compartilhamento */
         #shareButton {
+            padding: 14px 28px;
             background-color: #28a745;
+            color: white;
+            font-size: 1em;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
 
         #shareButton:hover {
@@ -92,19 +89,15 @@
             transform: translateY(-3px);
         }
 
-        /* Botão Parar Compartilhamento */
-        #stopButton {
-            background-color: #dc3545;
-        }
-
-        #stopButton:hover {
-            background-color: #c82333;
-            transform: translateY(-3px);
-        }
-
         /* Botão Logout */
         #logoutButton {
+            padding: 14px 28px;
             background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
 
         #logoutButton:hover {
@@ -169,11 +162,6 @@
                 gap: 10px;
             }
 
-            .controls button {
-                width: 100%;
-                min-width: unset;
-            }
-
             .share-link-container {
                 flex-direction: column;
                 gap: 10px;
@@ -204,7 +192,6 @@
         <video id="screenVideo" autoplay muted></video>
         <div class="controls">
             <button id="shareButton" onclick="startScreenShare()">Iniciar Compartilhamento</button>
-            <button id="stopButton" onclick="stopScreenShare()" disabled>Parar Compartilhamento</button>
             <button id="logoutButton" onclick="window.location.href='/logout'">Logout</button>
         </div>
     </div>
@@ -237,8 +224,10 @@
                 const videoElement = document.getElementById("screenVideo");
                 videoElement.srcObject = screenStream;
                 document.getElementById("shareButton").disabled = true;
-                document.getElementById("stopButton").disabled = false;
                 captureAndSendFrames();
+
+                // Adiciona o listener para parar a transmissão quando o usuário clicar no botão de parar da interface do vídeo
+                screenStream.getVideoTracks()[0].addEventListener("ended", stopScreenShare);
             } catch (err) {
                 console.error("Erro ao compartilhar a tela: ", err);
                 alert("Falha ao iniciar o compartilhamento de tela. Por favor, tente novamente.");
@@ -252,7 +241,6 @@
 
             captureInterval = setInterval(() => {
                 if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
-                    // Evita erros se o vídeo ainda não estiver carregado
                     return;
                 }
 
@@ -267,15 +255,13 @@
                     if (blob) {
                         const formData = new FormData();
                         formData.append("frame", blob, "screen.png");
-                        // Envia o frame atual para o endpoint '/<localidade>/upload_frame'
+
                         fetch(`/${localidade}/upload_frame`, {
                             method: "POST",
                             body: formData,
                         })
                         .then((response) => {
-                            if (response.ok) {
-                                console.log("Frame enviado com sucesso");
-                            } else {
+                            if (!response.ok) {
                                 console.error("Erro ao enviar frame");
                             }
                         })
@@ -296,7 +282,6 @@
             const videoElement = document.getElementById("screenVideo");
             videoElement.srcObject = null;
             document.getElementById("shareButton").disabled = false;
-            document.getElementById("stopButton").disabled = true;
             console.log("Compartilhamento de tela parado.");
             fetch(`/${localidade}/clear_cache`, {
                 method: "POST",

@@ -170,27 +170,31 @@ def upload_frame(localidade):
 def serve_pil_image(localidade):
     # Caminho para a pasta da localidade
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
-    
+
     # Verifica se a pasta da localidade existe
     if not os.path.isdir(local_dir):
         print(f"Pasta da localidade não encontrada: {local_dir}")
         abort(404, description="Localidade não encontrada.")
-    
+
     # Caminho completo para o arquivo screen.png
     image_path = os.path.join(local_dir, "screen.png")
-    
+
     # Verifica se o arquivo screen.png existe
     if not os.path.isfile(image_path):
         print(f"Arquivo de imagem não encontrado no caminho: {image_path}")
         abort(404, description="Imagem não encontrada.")
-    
-    print(f"Servindo a imagem mais recente para {localidade}.")
-    response = send_from_directory(local_dir, "screen.png", mimetype="image/png")
-    # Cabeçalhos para evitar cache
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
+
+    # Tentando servir a imagem corretamente
+    try:
+        response = send_from_directory(local_dir, "screen.png", mimetype="image/png")
+        # Evita cache
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+    except Exception as e:
+        print(f"Erro ao servir a imagem: {e}")
+        abort(500, description="Erro ao servir a imagem.")
 
 
 # Rota pública para visualizar a tela (acessível externamente)
