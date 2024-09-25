@@ -170,27 +170,31 @@ def upload_frame(localidade):
 def serve_pil_image(localidade):
     # Caminho para a pasta da localidade
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
-    
+
     # Verifica se a pasta da localidade existe
     if not os.path.isdir(local_dir):
         print(f"Pasta da localidade não encontrada: {local_dir}")
         abort(404, description="Localidade não encontrada.")
-    
+
     # Caminho completo para o arquivo screen.png
     image_path = os.path.join(local_dir, "screen.png")
-    
+
     # Verifica se o arquivo screen.png existe
     if not os.path.isfile(image_path):
         print(f"Arquivo de imagem não encontrado no caminho: {image_path}")
         abort(404, description="Imagem não encontrada.")
-    
-    print(f"Servindo a imagem mais recente para {localidade}.")
-    response = send_from_directory(local_dir, "screen.png", mimetype="image/png")
-    # Cabeçalhos para evitar cache
-    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
-    response.headers['Pragma'] = 'no-cache'
-    response.headers['Expires'] = '0'
-    return response
+
+    # Tentando servir a imagem corretamente
+    try:
+        response = send_from_directory(local_dir, "screen.png", mimetype="image/png")
+        # Evita cache
+        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
+        response.headers['Pragma'] = 'no-cache'
+        response.headers['Expires'] = '0'
+        return response
+    except Exception as e:
+        print(f"Erro ao servir a imagem: {e}")
+        abort(500, description="Erro ao servir a imagem.")
 
 
 # Rota pública para visualizar a tela (acessível externamente)
@@ -308,9 +312,17 @@ def unblock_user(user_id):
 def add_new_user():
     if "logged_in" in session and session["is_admin"]:
         if request.method == "POST":
-            username = request.form["username"]
-            password = request.form["password"]
+            username = request.form["username"].strip()
+            password = request.form["password"].strip()
             localidade = request.form["localidade"].strip().lower()
+
+            # Validações básicas
+            if not username or not password or not localidade:
+                flash("Todos os campos são obrigatórios.", "error")
+                return redirect(url_for("add_new_user"))
+            
+            # Você pode adicionar mais validações, como verificar formatos, tamanhos, etc.
+
             if add_user(username, password, localidade):
                 # Garantir que a pasta para a localidade exista
                 ensure_localidade_directory(localidade)
@@ -322,6 +334,7 @@ def add_new_user():
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
+
 
 
 # Rota para o administrador alterar a senha de um usuário

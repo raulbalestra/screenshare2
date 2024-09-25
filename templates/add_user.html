@@ -229,7 +229,7 @@
           {% endif %}
         {% endwith %}
 
-        <form method="POST" action="/add_user">
+        <form method="POST" action="{{ url_for('add_new_user') }}">
             <div class="input-group">
                 <label for="username">Nome de Usuário:</label>
                 <input type="text" id="username" name="username" required placeholder="Digite o nome de usuário">
