@@ -1,52 +1,140 @@
-<!-- dashboard.html -->
+<!-- templates/dashboard.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
+    <!-- Importando uma fonte moderna do Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Importando Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f7f6;
+        /* Reset básico */
+        * {
             margin: 0;
             padding: 0;
-            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #74ebd5 0%, #acb6e5 100%);
             display: flex;
             justify-content: center;
             align-items: center;
+            height: 100vh;
+            color: #333;
+            padding: 20px;
         }
 
         .container {
-            background-color: white;
-            border-radius: 10px;
-            padding: 40px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #fff;
+            border-radius: 15px;
+            padding: 40px 30px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 100%;
             text-align: center;
-            width: 300px;
+            animation: fadeIn 0.6s ease-in-out;
         }
 
         h2 {
-            color: #333;
+            margin-bottom: 30px;
+            color: #4a90e2;
+            font-size: 2em;
+            font-weight: 500;
         }
 
-        a {
+        p {
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            color: #555;
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .actions a {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            background-color: #4a90e2;
+            color: #fff;
             text-decoration: none;
-            color: #4CAF50;
-            font-weight: bold;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 500;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
         }
 
-        a:hover {
-            color: #45a049;
+        .actions a i {
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+
+        .actions a:hover {
+            background-color: #357ABD;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Botão de Logout com cor diferenciada */
+        .actions a.logout {
+            background-color: #dc3545;
+        }
+
+        .actions a.logout:hover {
+            background-color: #c82333;
+        }
+
+        /* Responsividade */
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+
+            .actions a {
+                font-size: 0.95em;
+                padding: 10px 18px;
+            }
+
+            .actions a i {
+                font-size: 1em;
+                margin-right: 8px;
+            }
+        }
+
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>Bem-vindo ao Dashboard</h2>
-        <p>Escolha uma ação:</p>
-        <p><a href="/change_password">Trocar Senha</a></p>
-        <p><a href="/logout">Logout</a></p>
+        <p>Escolha uma ação abaixo:</p>
+        <div class="actions">
+            <a href="/change_password">
+                <i class="fas fa-key"></i>
+                Trocar Senha
+            </a>
+            <a href="/logout" class="logout">
+                <i class="fas fa-sign-out-alt"></i>
+                Logout
+            </a>
+        </div>
     </div>
 </body>
 </html>

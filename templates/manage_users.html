@@ -1,132 +1,344 @@
+<!-- templates/manage_users.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Usuários</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Importando Font Awesome com hash de integridade atualizado -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-t5R+Kvzml0eFq9X7+VGFhrJ1j9J0d4n+nQpXh1LLnB5/ZTvjqIhaLxV9F0R2Iqz63mDq6k59KX4R2p10iqA2Gw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-       body {
-            font-family: 'Arial', sans-serif;
-            background-color: #f4f7f6;
+        /* Variáveis de Cores */
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #f0f4f8;
+            --accent-color: #28a745;
+            --error-color: #dc3545;
+            --success-color: #28a745;
+            --text-color: #333333;
+            --background-color: #ffffff;
+            --table-header-bg: #f8f8f8;
+            --button-color: #007bff;
+            --button-hover-color: #0056b3;
+            --delete-button-color: #dc3545;
+            --delete-button-hover-color: #c82333;
+            --add-button-color: #28a745;
+            --add-button-hover-color: #218838;
+            --block-button-color: #ffc107;
+            --block-button-hover-color: #e0a800;
+            --unblock-button-color: #17a2b8;
+            --unblock-button-hover-color: #117a8b;
+            --border-color: #dddddd;
+            --box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            --transition-speed: 0.3s;
+            --font-size: 16px;
+        }
+
+        /* Reset Básico */
+        *, *::before, *::after {
+            box-sizing: border-box;
             margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--secondary-color);
             padding: 20px;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            color: var(--text-color);
+        }
+
+        /* Container Principal */
+        .container {
+            background-color: var(--background-color);
+            padding: 40px 30px;
+            border-radius: 12px;
+            max-width: 1200px;
+            width: 100%;
+            box-shadow: var(--box-shadow);
+            transition: transform var(--transition-speed);
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        /* Título */
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--primary-color);
+            font-size: 2em;
+            font-weight: 700;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        h2 i {
+            margin-right: 10px;
+            color: var(--primary-color);
+            animation: rotateIcon 4s linear infinite;
+        }
+
+        @keyframes rotateIcon {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        h2::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background-color: var(--primary-color);
+            margin: 10px auto 0;
+            border-radius: 2px;
+        }
+
+        /* Botão Adicionar Usuário */
+        .add-user {
+            text-align: right;
+            margin-bottom: 20px;
+        }
+
+        .add-user-btn {
+            padding: 10px 20px;
+            background-color: var(--add-button-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: var(--font-size);
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color var(--transition-speed), transform var(--transition-speed);
+            display: inline-flex;
             align-items: center;
         }
 
-        h2 {
-            color: #333;
-            margin-bottom: 20px;
+        .add-user-btn i {
+            margin-right: 8px;
         }
 
+        .add-user-btn:hover {
+            background-color: var(--add-button-hover-color);
+            transform: translateY(-2px);
+        }
+
+        /* Mensagens Flash */
+        .flash-message {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 500;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .error {
+            background-color: #f8d7da;
+            color: var(--error-color);
+            border: 1px solid #f5c6cb;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: var(--success-color);
+            border: 1px solid #c3e6cb;
+        }
+
+        /* Tabela de Usuários */
         table {
             width: 100%;
-            max-width: 900px;
             border-collapse: collapse;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            background-color: white;
-            border-radius: 8px;
-            overflow: hidden;
+            margin-bottom: 30px;
+            overflow-x: auto;
         }
 
-        table, th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
-            text-align: center;
+        th, td {
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border-color);
+            text-align: left;
+            font-size: var(--font-size);
         }
 
         th {
-            background-color: #007bff;
-            color: white;
-            font-weight: bold;
+            background-color: var(--table-header-bg);
+            position: sticky;
+            top: 0;
+            z-index: 2;
         }
 
-        td {
+        tr:nth-child(even) {
             background-color: #f9f9f9;
         }
 
+        tr:hover {
+            background-color: #f1f1f1;
+            transition: background-color var(--transition-speed);
+        }
+
+        /* Botões de Ação */
         .button {
             padding: 8px 16px;
-            background-color: #dc3545; /* Vermelho */
+            background-color: var(--button-color);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.9em;
+            font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.3s ease;
+            transition: background-color var(--transition-speed), transform var(--transition-speed);
+            display: inline-flex;
+            align-items: center;
+            margin-right: 5px;
+        }
+
+        .button i {
             margin-right: 5px;
         }
 
         .button:hover {
-            background-color: #c82333;
+            background-color: var(--button-hover-color);
+            transform: translateY(-2px);
         }
 
-        .block-button {
-            padding: 8px 16px;
-            background-color: #ffc107; /* Amarelo */
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-right: 5px;
+        .delete-btn {
+            background-color: var(--delete-button-color);
         }
 
-        .block-button:hover {
-            background-color: #e0a800;
+        .delete-btn:hover {
+            background-color: var(--delete-button-hover-color);
+            transform: translateY(-2px);
         }
 
-        .unblock-button {
-            padding: 8px 16px;
-            background-color: #28a745; /* Verde */
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            margin-right: 5px;
+        /* Botão Bloquear Usuário */
+        .block-btn {
+            background-color: var(--block-button-color);
         }
 
-        .unblock-button:hover {
-            background-color: #218838;
+        .block-btn:hover {
+            background-color: var(--block-button-hover-color);
+            transform: translateY(-2px);
         }
 
-        .back-button {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border-radius: 5px;
-            text-decoration: none;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        /* Botão Desbloquear Usuário */
+        .unblock-btn {
+            background-color: var(--unblock-button-color);
         }
 
-        .back-button:hover {
-            background-color: #0056b3;
+        .unblock-btn:hover {
+            background-color: var(--unblock-button-hover-color);
+            transform: translateY(-2px);
         }
 
-        .container {
-            width: 100%;
-            max-width: 900px;
-            margin: 0 auto;
+        /* Link para Trocar a Própria Senha do Admin */
+        .admin-action {
+            display: flex;
+            justify-content: center;
+        }
+
+        .admin-action .button {
+            background-color: var(--primary-color);
+        }
+
+        .admin-action .button:hover {
+            background-color: #357ABD; /* Cor fixa, já que a função darken não é suportada diretamente no CSS */
+        }
+
+        /* Animação FadeIn */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+
+            th, td {
+                padding: 10px 15px;
+            }
+
+            .add-user-btn {
+                padding: 8px 16px;
+                font-size: 0.9em;
+            }
+
+            .button {
+                padding: 6px 12px;
+                font-size: 0.8em;
+            }
+
+            .admin-action .button {
+                padding: 8px 16px;
+                font-size: 0.9em;
+            }
+        }
+
+        @media (max-width: 480px) {
+            th, td {
+                padding: 8px 10px;
+                font-size: 0.85em;
+            }
+
+            .add-user-btn {
+                padding: 6px 12px;
+                font-size: 0.8em;
+            }
+
+            .button {
+                padding: 5px 10px;
+                font-size: 0.7em;
+            }
+
+            .admin-action .button {
+                padding: 6px 12px;
+                font-size: 0.8em;
+            }
         }
     </style>
 </head>
 <body>
-
     <div class="container">
-        <h2>Gerenciar Usuários</h2>
-
+        <h2><i class="fas fa-users-cog"></i> Gerenciar Usuários</h2>
+        
+        <!-- Botão para Adicionar Usuário -->
+        <div class="add-user">
+            <a href="{{ url_for('add_new_user') }}" class="add-user-btn"><i class="fas fa-user-plus"></i> Adicionar Usuário</a>
+        </div>
+        
+        <!-- Mensagens Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        
+        <!-- Tabela de Usuários -->
         <table>
             <thead>
                 <tr>
                     <th>ID</th>
                     <th>Nome de Usuário</th>
                     <th>Localidade</th>
-                    <th>Status</th>
+                    <th>Admin</th>
+                    <th>Ativo</th>
                     <th>Ações</th>
                 </tr>
             </thead>
@@ -135,23 +347,28 @@
                 <tr>
                     <td>{{ user.id }}</td>
                     <td>{{ user.username }}</td>
-                    <td>{{ user.localidade }}</td>
-                    <td>{{ 'Ativo' if user.is_active else 'Bloqueado' }}</td>
-                    <td>
+                    <td>{{ user.localidade.capitalize() }}</td>
+                    <td>{{ 'Sim' if user.is_admin else 'Não' }}</td>
+                    <td>{{ 'Sim' if user.is_active else 'Não' }}</td>
+                    <<td>
                         {% if not user.is_admin %}
-                            <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" style="display:inline;">
-                                <button type="submit" class="button">Excluir</button>
-                            </form>
+                            <a href="{{ url_for('admin_change_password', user_id=user.id) }}" class="button"><i class="fas fa-key"></i> Alterar Senha</a>
+                            
                             {% if user.is_active %}
                                 <form action="{{ url_for('block_user', user_id=user.id) }}" method="POST" style="display:inline;">
-                                    <button type="submit" class="block-button">Bloquear</button>
+                                    <button type="submit" class="button block-btn"><i class="fas fa-ban"></i> Bloquear</button>
                                 </form>
                             {% else %}
                                 <form action="{{ url_for('unblock_user', user_id=user.id) }}" method="POST" style="display:inline;">
-                                    <button type="submit" class="unblock-button">Desbloquear</button>
+                                    <button type="submit" class="button unblock-btn"><i class="fas fa-check-circle"></i> Desbloquear</button>
                                 </form>
                             {% endif %}
+                            
+                            <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este usuário?');" style="display:inline;">
+                                <button type="submit" class="button delete-btn"><i class="fas fa-trash"></i> Excluir</button>
+                            </form>
                         {% else %}
+                            <!-- Admin não pode alterar ou excluir outros admins -->
                             <span>N/A</span>
                         {% endif %}
                     </td>
@@ -159,9 +376,12 @@
                 {% endfor %}
             </tbody>
         </table>
-
-        <a href="/admin_dashboard" class="back-button">Voltar ao Painel do Administrador</a>
+     
+        <!-- Link para Trocar a Própria Senha do Admin -->
+        <div class="admin-action">
+            <a href="{{ url_for('admin_change_own_password') }}" class="button"><i class="fas fa-user-cog"></i> Trocar Minha Senha</a>
+        </div>
     </div>
-
+    
 </body>
 </html>
