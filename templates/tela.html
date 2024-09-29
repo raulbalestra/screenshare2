@@ -6,8 +6,8 @@
     <title>Visualização da Tela</title>
     <!-- Importando uma fonte moderna do Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Importando Font Awesome para ícones (opcional) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Importando Font Awesome para ícones (sem o atributo de integridade) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         /* Variáveis de Cores */
         :root {
@@ -51,11 +51,11 @@
 
         /* Estilos para a imagem da tela */
         #screen {
-            width: 100vw;
-            height: 100vh;
-            object-fit: cover; /* Cobre toda a área da tela sem distorção */
-            background-color: #000;
+            width: 95vw;
+            height: 95vh;
+            object-fit: contain; /* Cobre toda a área da tela sem distorção */
         }
+
 
         /* Responsividade */
         @media (max-width: 768px) {

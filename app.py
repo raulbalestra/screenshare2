@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import time
 from flask import (
     Flask,
     flash,
@@ -471,25 +472,24 @@ def change_password():
     return render_template("change_password.html")
 
 
-# Rota para limpar o cache de uma localidade específica
-@app.route("/<localidade>/clear_cache", methods=["POST"])
-def clear_cache(localidade):
-    # Caminho para o arquivo screen.png da localidade
+@app.route("/<localidade>/clear_old_frames", methods=["POST"])
+def clear_old_frames(localidade):
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
-    frame_path_local = os.path.join(local_dir, "screen.png")
-    print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
-    print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
+    now = time.time()
+    cutoff = now - 60 * 60  # Limite de 1 hora
+
     try:
-        if os.path.exists(frame_path_local):
-            os.remove(frame_path_local)
-            print("[clear_cache] Arquivo deletado com sucesso.")
-            return jsonify({"message": "Cache limpo com sucesso."}), 200
+        if os.path.isdir(local_dir):
+            for file_name in os.listdir(local_dir):
+                file_path = os.path.join(local_dir, file_name)
+                if os.path.isfile(file_path) and file_name.endswith(".png"):
+                    if os.stat(file_path).st_mtime < cutoff:
+                        os.remove(file_path)
+            return jsonify({"message": "Imagens antigas removidas com sucesso."}), 200
         else:
-            print("[clear_cache] Arquivo não encontrado.")
-            return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
+            return jsonify({"message": "Localidade não encontrada."}), 404
     except Exception as e:
-        print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
-        return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
+        return jsonify({"message": f"Erro ao remover imagens antigas: {str(e)}"}), 500
 
 
 # Inicializar o banco de dados antes de servir qualquer rota
