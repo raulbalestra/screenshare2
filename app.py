@@ -32,7 +32,6 @@ def get_db_connection():
     return conn
 
 
-# Função para criar o banco de dados
 def create_database():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -48,21 +47,28 @@ def create_database():
         )
         """
     )
-    cursor.execute(
-        """
-        INSERT OR IGNORE INTO users (username, password, localidade, is_admin, is_active)
-        VALUES
-        ('curitiba_user', ?, 'curitiba', 0, 1),
-        ('sp_user', ?, 'sp', 0, 1),
-        ('admin', ?, 'admin', 1, 1)
-        """
-    , (
-        generate_password_hash('senha_curitiba'),
-        generate_password_hash('senha_sp'),
-        generate_password_hash('admin')
-    ))
+    
+    # Verifique se há algum usuário já existente
+    user_check = cursor.execute("SELECT COUNT(*) FROM users").fetchone()
+    
+    # Apenas insira os usuários padrão se a tabela estiver vazia
+    if user_check[0] == 0:
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO users (username, password, localidade, is_admin, is_active)
+            VALUES
+            ('curitiba_user', ?, 'curitiba', 0, 1),
+            ('sp_user', ?, 'sp', 0, 1),
+            ('admin', ?, 'admin', 1, 1)
+            """
+        , (
+            generate_password_hash('senha_curitiba'),
+            generate_password_hash('senha_sp'),
+            generate_password_hash('admin')
+        ))
     conn.commit()
     conn.close()
+
 
 
 # Função para validar o login
