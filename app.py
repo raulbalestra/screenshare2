@@ -1,6 +1,5 @@
 import os
 import sqlite3
-import time
 from flask import (
     Flask,
     flash,
@@ -33,7 +32,6 @@ def get_db_connection():
     return conn
 
 
-# Função para criar o banco de dados
 def create_database():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -49,21 +47,28 @@ def create_database():
         )
         """
     )
-    cursor.execute(
-        """
-        INSERT OR IGNORE INTO users (username, password, localidade, is_admin, is_active)
-        VALUES
-        ('curitiba_user', ?, 'curitiba', 0, 1),
-        ('sp_user', ?, 'sp', 0, 1),
-        ('admin', ?, 'admin', 1, 1)
-        """
-    , (
-        generate_password_hash('senha_curitiba'),
-        generate_password_hash('senha_sp'),
-        generate_password_hash('admin')
-    ))
+    
+    # Verifique se há algum usuário já existente
+    user_check = cursor.execute("SELECT COUNT(*) FROM users").fetchone()
+    
+    # Apenas insira os usuários padrão se a tabela estiver vazia
+    if user_check[0] == 0:
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO users (username, password, localidade, is_admin, is_active)
+            VALUES
+            ('curitiba_user', ?, 'curitiba', 0, 1),
+            ('sp_user', ?, 'sp', 0, 1),
+            ('admin', ?, 'admin', 1, 1)
+            """
+        , (
+            generate_password_hash('senha_curitiba'),
+            generate_password_hash('senha_sp'),
+            generate_password_hash('admin')
+        ))
     conn.commit()
     conn.close()
+
 
 
 # Função para validar o login
@@ -472,24 +477,25 @@ def change_password():
     return render_template("change_password.html")
 
 
-@app.route("/<localidade>/clear_old_frames", methods=["POST"])
-def clear_old_frames(localidade):
+# Rota para limpar o cache de uma localidade específica
+@app.route("/<localidade>/clear_cache", methods=["POST"])
+def clear_cache(localidade):
+    # Caminho para o arquivo screen.png da localidade
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
-    now = time.time()
-    cutoff = now - 60 * 60  # Limite de 1 hora
-
+    frame_path_local = os.path.join(local_dir, "screen.png")
+    print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
+    print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
     try:
-        if os.path.isdir(local_dir):
-            for file_name in os.listdir(local_dir):
-                file_path = os.path.join(local_dir, file_name)
-                if os.path.isfile(file_path) and file_name.endswith(".png"):
-                    if os.stat(file_path).st_mtime < cutoff:
-                        os.remove(file_path)
-            return jsonify({"message": "Imagens antigas removidas com sucesso."}), 200
+        if os.path.exists(frame_path_local):
+            os.remove(frame_path_local)
+            print("[clear_cache] Arquivo deletado com sucesso.")
+            return jsonify({"message": "Cache limpo com sucesso."}), 200
         else:
-            return jsonify({"message": "Localidade não encontrada."}), 404
+            print("[clear_cache] Arquivo não encontrado.")
+            return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
     except Exception as e:
-        return jsonify({"message": f"Erro ao remover imagens antigas: {str(e)}"}), 500
+        print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
+        return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
 
 
 # Inicializar o banco de dados antes de servir qualquer rota
