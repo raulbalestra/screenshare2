@@ -23,7 +23,8 @@ app.secret_key = "sua_chave_secreta_aqui"
 
 # Diretório base para armazenar as imagens das localidades
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-IMAGE_DIR = os.path.join(BASE_DIR, 'static', 'images')
+IMAGE_DIR = os.path.join(BASE_DIR, "static", "images")
+
 
 def get_db_connection():
     conn = psycopg2.connect(
@@ -31,10 +32,13 @@ def get_db_connection():
         database=os.getenv("DB_NAME", "nome_do_banco"),
         user=os.getenv("DB_USER", "usuario"),
         password=os.getenv("DB_PASSWORD", "senha"),
-        port=os.getenv("DB_PORT", "5432"),  # Verifique se este valor no .env é apenas um número
-        sslmode='require'  # Certifique-se de que o SSL está habilitado, se necessário
+        port=os.getenv(
+            "DB_PORT", "5432"
+        ),  # Verifique se este valor no .env é apenas um número
+        sslmode="require",  # Certifique-se de que o SSL está habilitado, se necessário
     )
     return conn
+
 
 # Função para criar a tabela de usuários no banco de dados PostgreSQL
 def create_database():
@@ -68,15 +72,28 @@ def create_database():
             (%s, %s, %s, %s, %s)
             """,
             (
-                'curitiba_user', generate_password_hash('senha_curitiba'), 'curitiba', False, True,
-                'sp_user', generate_password_hash('senha_sp'), 'sp', False, True,
-                'admin', generate_password_hash('admin'), 'admin', True, True
-            )
+                "curitiba_user",
+                generate_password_hash("senha_curitiba"),
+                "curitiba",
+                False,
+                True,
+                "sp_user",
+                generate_password_hash("senha_sp"),
+                "sp",
+                False,
+                True,
+                "admin",
+                generate_password_hash("admin"),
+                "admin",
+                True,
+                True,
+            ),
         )
 
     conn.commit()
     cursor.close()
     conn.close()
+
 
 # Função para validar o login
 def check_login(username, password):
@@ -86,13 +103,14 @@ def check_login(username, password):
     user = cursor.fetchone()
     cursor.close()
     conn.close()
-    
+
     if user and check_password_hash(user[2], password):  # user[2] é a coluna password
         if user[5]:  # user[5] é a coluna is_active
             return user[3], user[4]  # Retorna localidade (user[3]) e is_admin (user[4])
         else:
             return "blocked", None
     return None, None
+
 
 # Função para adicionar um usuário
 def add_user(username, password, localidade):
@@ -102,10 +120,13 @@ def add_user(username, password, localidade):
     hashed_password = generate_password_hash(password)
 
     try:
-        cursor.execute("""
+        cursor.execute(
+            """
             INSERT INTO users (username, password, localidade, is_admin, is_active)
             VALUES (%s, %s, %s, %s, %s)
-        """, (username, hashed_password, localidade, False, True))
+        """,
+            (username, hashed_password, localidade, False, True),
+        )
 
         conn.commit()
     except psycopg2.IntegrityError:
@@ -117,17 +138,19 @@ def add_user(username, password, localidade):
 
     return True
 
+
 # Função para garantir que a pasta da localidade exista
 def ensure_localidade_directory(localidade):
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
     if not os.path.isdir(local_dir):
         os.makedirs(local_dir)
         # Opcional: Criar um arquivo placeholder para screen.png
-        placeholder_path = os.path.join(local_dir, 'screen.png')
+        placeholder_path = os.path.join(local_dir, "screen.png")
         if not os.path.isfile(placeholder_path):
-            with open(placeholder_path, 'wb') as f:
+            with open(placeholder_path, "wb") as f:
                 pass  # Cria um arquivo vazio ou adicione uma imagem padrão
     return local_dir
+
 
 # Rota para login
 @app.route("/login", methods=["POST"])
@@ -150,6 +173,7 @@ def login():
     else:
         flash("Nome de usuário ou senha inválidos.", "error")
         return redirect(url_for("index"))
+
 
 # Rota para logout
 @app.route("/logout")
@@ -204,9 +228,11 @@ def serve_pil_image(localidade):
     try:
         response = send_from_directory(local_dir, "screen.png", mimetype="image/png")
         # Evita cache
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, max-age=0'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
+        response.headers["Cache-Control"] = (
+            "no-cache, no-store, must-revalidate, max-age=0"
+        )
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
         return response
     except Exception as e:
         print(f"Erro ao servir a imagem: {e}")
@@ -269,15 +295,18 @@ def manage_users():
     if "logged_in" in session and session["is_admin"]:
         conn = get_db_connection()
         cursor = conn.cursor()  # Criar um cursor para executar consultas
-        cursor.execute("SELECT id, username, localidade, is_admin, is_active FROM users")  # Executar a consulta através do cursor
+        cursor.execute(
+            "SELECT id, username, localidade, is_admin, is_active FROM users"
+        )  # Executar a consulta através do cursor
         users = cursor.fetchall()  # Buscar todos os resultados
         cursor.close()  # Fechar o cursor
         conn.close()  # Fechar a conexão
-        return render_template("manage_users.html", users=users)  # Passar os usuários como tuplas
+        return render_template(
+            "manage_users.html", users=users
+        )  # Passar os usuários como tuplas
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
-
 
 
 # Rota para deletar usuário
@@ -285,8 +314,10 @@ def manage_users():
 def delete_user(user_id):
     if "logged_in" in session and session["is_admin"]:
         conn = get_db_connection()
-        conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
         conn.commit()
+        cursor.close()
         conn.close()
         flash("Usuário excluído com sucesso!", "success")
         return redirect(url_for("manage_users"))
@@ -300,8 +331,10 @@ def delete_user(user_id):
 def block_user(user_id):
     if "logged_in" in session and session["is_admin"]:
         conn = get_db_connection()
-        conn.execute("UPDATE users SET is_active = 0 WHERE id = ?", (user_id,))
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET is_active = 0 WHERE id = %s", (user_id,))
         conn.commit()
+        cursor.close()
         conn.close()
         flash("Usuário bloqueado com sucesso!", "success")
         return redirect(url_for("manage_users"))
@@ -315,8 +348,10 @@ def block_user(user_id):
 def unblock_user(user_id):
     if "logged_in" in session and session["is_admin"]:
         conn = get_db_connection()
-        conn.execute("UPDATE users SET is_active = 1 WHERE id = ?", (user_id,))
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET is_active = 1 WHERE id = %s", (user_id,))
         conn.commit()
+        cursor.close()
         conn.close()
         flash("Usuário desbloqueado com sucesso!", "success")
         return redirect(url_for("manage_users"))
@@ -338,7 +373,7 @@ def add_new_user():
             if not username or not password or not localidade:
                 flash("Todos os campos são obrigatórios.", "error")
                 return redirect(url_for("add_new_user"))
-            
+
             # Você pode adicionar mais validações, como verificar formatos, tamanhos, etc.
 
             if add_user(username, password, localidade):
@@ -354,48 +389,52 @@ def add_new_user():
         return redirect(url_for("index"))
 
 
-
 # Rota para o administrador alterar a senha de um usuário
 @app.route("/admin/change_password/<int:user_id>", methods=["GET", "POST"])
 def admin_change_password(user_id):
     if "logged_in" in session and session.get("is_admin"):
         conn = get_db_connection()
-        user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+        user = cursor.fetchone()
         if not user:
+            cursor.close()
             conn.close()
             flash("Usuário não encontrado.", "error")
             return redirect(url_for("manage_users"))
-        
+
         if request.method == "POST":
             new_password = request.form["new_password"]
             confirm_password = request.form["confirm_password"]
-            
+
             if not new_password or not confirm_password:
                 flash("Ambos os campos de senha são obrigatórios.", "error")
+                cursor.close()
                 conn.close()
                 return redirect(url_for("admin_change_password", user_id=user_id))
-            
+
             if new_password != confirm_password:
                 flash("As senhas não coincidem.", "error")
+                cursor.close()
                 conn.close()
                 return redirect(url_for("admin_change_password", user_id=user_id))
-            
+
             try:
                 hashed_password = generate_password_hash(new_password)
-                conn.execute(
-                    "UPDATE users SET password = ? WHERE id = ?", (hashed_password, user_id)
+                cursor.execute(
+                    "UPDATE users SET password = %s WHERE id = %s",
+                    (hashed_password, user_id),
                 )
                 conn.commit()
-                conn.close()
-                flash(f"Senha do usuário {user['username']} atualizada com sucesso.", "success")
+                flash(f"Senha do usuário {user[1]} atualizada com sucesso.", "success")
                 return redirect(url_for("manage_users"))
             except Exception as e:
-                conn.close()
                 flash(f"Erro ao atualizar a senha: {str(e)}", "error")
                 return redirect(url_for("admin_change_password", user_id=user_id))
-        else:
-            conn.close()
-            return render_template("admin_change_password.html", user=user)
+            finally:
+                cursor.close()
+                conn.close()
+        return render_template("admin_change_password.html", user=user)
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
@@ -420,22 +459,29 @@ def admin_change_own_password():
                 return redirect(url_for("admin_change_own_password"))
 
             conn = get_db_connection()
-            user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
-            if user and check_password_hash(user["password"], current_password):
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+            user = cursor.fetchone()
+            if user and check_password_hash(user[2], current_password):
                 try:
                     hashed_password = generate_password_hash(new_password)
-                    conn.execute("UPDATE users SET password = ? WHERE username = ?", (hashed_password, username))
+                    cursor.execute(
+                        "UPDATE users SET password = %s WHERE username = %s",
+                        (hashed_password, username),
+                    )
                     conn.commit()
-                    conn.close()
                     flash("Senha atualizada com sucesso.", "success")
                     return redirect(url_for("admin_dashboard"))
                 except Exception as e:
-                    conn.close()
                     flash(f"Erro ao atualizar a senha: {str(e)}", "error")
                     return redirect(url_for("admin_change_own_password"))
+                finally:
+                    cursor.close()
+                    conn.close()
             else:
-                conn.close()
                 flash("Senha atual incorreta.", "error")
+                cursor.close()
+                conn.close()
                 return redirect(url_for("admin_change_own_password"))
         return render_template("admin_change_own_password.html")
     else:
@@ -451,41 +497,44 @@ def change_password():
         if request.method == "POST":
             new_password = request.form["new_password"]
             confirm_password = request.form["confirm_password"]
-            
+
             if not new_password or not confirm_password:
                 flash("Ambos os campos de senha são obrigatórios.", "error")
                 return redirect(url_for("change_password"))
-            
+
             if new_password != confirm_password:
                 flash("As senhas não coincidem.", "error")
                 return redirect(url_for("change_password"))
-            
+
             conn = get_db_connection()
-            user = conn.execute(
-                "SELECT * FROM users WHERE username = ?", (username,)
-            ).fetchone()
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+            user = cursor.fetchone()
             if user:
                 try:
                     hashed_password = generate_password_hash(new_password)
-                    conn.execute(
-                        "UPDATE users SET password = ? WHERE username = ?", (hashed_password, username)
+                    cursor.execute(
+                        "UPDATE users SET password = %s WHERE username = %s",
+                        (hashed_password, username),
                     )
                     conn.commit()
-                    conn.close()
                     flash("Senha atualizada com sucesso.", "success")
                     return redirect("/")
                 except Exception as e:
-                    conn.close()
                     flash(f"Erro ao atualizar a senha: {str(e)}", "error")
                     return redirect(url_for("change_password"))
+                finally:
+                    cursor.close()
+                    conn.close()
             else:
-                conn.close()
                 flash("Usuário não encontrado.", "error")
+                cursor.close()
+                conn.close()
                 return redirect(url_for("change_password"))
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
-    
+
     return render_template("change_password.html")
 
 
@@ -495,7 +544,9 @@ def clear_cache(localidade):
     # Caminho para o arquivo screen.png da localidade
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
     frame_path_local = os.path.join(local_dir, "screen.png")
-    print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
+    print(
+        f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}"
+    )
     print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
     try:
         if os.path.exists(frame_path_local):
@@ -504,10 +555,29 @@ def clear_cache(localidade):
             return jsonify({"message": "Cache limpo com sucesso."}), 200
         else:
             print("[clear_cache] Arquivo não encontrado.")
-            return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
+            return (
+                jsonify(
+                    {
+                        "message": "Nenhum cache encontrado para a localidade especificada."
+                    }
+                ),
+                404,
+            )
     except Exception as e:
         print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
         return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
+
+
+# Página de erro 404 - Página não encontrada
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template("404.html"), 404
+
+
+# Página de erro 500 - Erro interno do servidor
+@app.errorhandler(500)
+def internal_server_error(e):
+    return render_template("500.html"), 500
 
 
 # Inicializar o banco de dados antes de servir qualquer rota
