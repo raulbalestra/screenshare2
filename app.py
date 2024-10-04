@@ -47,13 +47,14 @@ def create_database():
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
-            username VARCHAR(255) UNIQUE NOT NULL,
-            password VARCHAR(255) NOT NULL,
-            localidade VARCHAR(100) NOT NULL,
-            is_admin BOOLEAN DEFAULT FALSE,
-            is_active BOOLEAN DEFAULT TRUE
-        )
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    localidade VARCHAR(100) NOT NULL,
+    is_admin BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE
+);
+
         """
     )
 
@@ -332,11 +333,17 @@ def block_user(user_id):
     if "logged_in" in session and session["is_admin"]:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE users SET is_active = 0 WHERE id = %s", (user_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        flash("Usuário bloqueado com sucesso!", "success")
+        try:
+            cursor.execute(
+                "UPDATE users SET is_active = %s WHERE id = %s", (False, user_id)
+            )
+            conn.commit()
+            flash("Usuário bloqueado com sucesso!", "success")
+        except Exception as e:
+            flash(f"Erro ao bloquear o usuário: {str(e)}", "error")
+        finally:
+            cursor.close()
+            conn.close()
         return redirect(url_for("manage_users"))
     else:
         flash("Acesso não autorizado.", "error")
@@ -349,44 +356,55 @@ def unblock_user(user_id):
     if "logged_in" in session and session["is_admin"]:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("UPDATE users SET is_active = 1 WHERE id = %s", (user_id,))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        flash("Usuário desbloqueado com sucesso!", "success")
+        try:
+            cursor.execute(
+                "UPDATE users SET is_active = %s WHERE id = %s", (True, user_id)
+            )
+            conn.commit()
+            flash("Usuário desbloqueado com sucesso!", "success")
+        except Exception as e:
+            flash(f"Erro ao desbloquear o usuário: {str(e)}", "error")
+        finally:
+            cursor.close()
+            conn.close()
         return redirect(url_for("manage_users"))
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
 
-# Rota para adicionar um novo usuário
 @app.route("/admin/add_user", methods=["GET", "POST"])
 def add_new_user():
-    if "logged_in" in session and session["is_admin"]:
-        if request.method == "POST":
-            username = request.form["username"].strip()
-            password = request.form["password"].strip()
-            localidade = request.form["localidade"].strip().lower()
+    if request.method == "POST":
+        username = request.form["username"]
+        password = request.form["password"]
+        localidade = request.form["localidade"]
 
-            # Validações básicas
-            if not username or not password or not localidade:
-                flash("Todos os campos são obrigatórios.", "error")
-                return redirect(url_for("add_new_user"))
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            hashed_password = generate_password_hash(password)
+            cursor.execute(
+                """
+                INSERT INTO users (username, password, localidade, is_admin, is_active)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (username, hashed_password, localidade, False, True),
+            )
+            conn.commit()
+            flash("Usuário adicionado com sucesso!", "success")
+        except psycopg2.IntegrityError:
+            conn.rollback()
+            flash("Erro: Nome de usuário já existe!", "error")
+        except Exception as e:
+            flash(f"Erro ao adicionar o usuário: {str(e)}", "error")
+        finally:
+            cursor.close()
+            conn.close()
 
-            # Você pode adicionar mais validações, como verificar formatos, tamanhos, etc.
+        return redirect(url_for("manage_users"))
 
-            if add_user(username, password, localidade):
-                # Garantir que a pasta para a localidade exista
-                ensure_localidade_directory(localidade)
-                flash("Usuário adicionado com sucesso!", "success")
-            else:
-                flash("Erro: Nome de usuário já existe!", "error")
-            return redirect(url_for("manage_users"))
-        return render_template("add_user.html")
-    else:
-        flash("Acesso não autorizado.", "error")
-        return redirect(url_for("index"))
+    return render_template("add_user.html")
 
 
 # Rota para o administrador alterar a senha de um usuário
