@@ -291,19 +291,6 @@
           icon.classList.add("fa-lock");
         }
       }
-
-      // Validação simples de senha no frontend
-      document
-        .getElementById("addUserForm")
-        .addEventListener("submit", function (event) {
-          const password = document.getElementById("password").value;
-          const minLength = 6;
-
-          if (password.length < minLength) {
-            alert(`A senha deve ter pelo menos ${minLength} caracteres.`);
-            event.preventDefault(); // Evita o envio do formulário
-          }
-        });
     </script>
   </body>
 </html>
