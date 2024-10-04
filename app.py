@@ -1,5 +1,5 @@
 import os
-import sqlite3
+import psycopg2
 from flask import (
     Flask,
     flash,
@@ -13,6 +13,10 @@ from flask import (
     jsonify,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
+
+# Carregar variáveis do arquivo .env
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
@@ -21,89 +25,97 @@ app.secret_key = "sua_chave_secreta_aqui"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 IMAGE_DIR = os.path.join(BASE_DIR, 'static', 'images')
 
-# Caminho para salvar a imagem do frame (não mais necessário, mas mantido para referência)
-frame_path = os.path.join(os.getcwd(), "current_frame.png")
-
-
-# Função para conectar ao banco de dados
 def get_db_connection():
-    conn = sqlite3.connect("users.db")
-    conn.row_factory = sqlite3.Row
+    conn = psycopg2.connect(
+        host=os.getenv("DB_HOST", "localhost"),
+        database=os.getenv("DB_NAME", "nome_do_banco"),
+        user=os.getenv("DB_USER", "usuario"),
+        password=os.getenv("DB_PASSWORD", "senha"),
+        port=os.getenv("DB_PORT", "5432"),  # Verifique se este valor no .env é apenas um número
+        sslmode='require'  # Certifique-se de que o SSL está habilitado, se necessário
+    )
     return conn
 
-
+# Função para criar a tabela de usuários no banco de dados PostgreSQL
 def create_database():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            localidade TEXT NOT NULL,
-            is_admin INTEGER DEFAULT 0,  -- 0 para usuários comuns, 1 para admin
-            is_active INTEGER DEFAULT 1  -- 1 para ativo, 0 para bloqueado
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(255) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            localidade VARCHAR(100) NOT NULL,
+            is_admin BOOLEAN DEFAULT FALSE,
+            is_active BOOLEAN DEFAULT TRUE
         )
         """
     )
-    
+
     # Verifique se há algum usuário já existente
-    user_check = cursor.execute("SELECT COUNT(*) FROM users").fetchone()
-    
-    # Apenas insira os usuários padrão se a tabela estiver vazia
+    cursor.execute("SELECT COUNT(*) FROM users")
+    user_check = cursor.fetchone()
+
+    # Inserir usuários padrão se a tabela estiver vazia
     if user_check[0] == 0:
         cursor.execute(
             """
-            INSERT OR IGNORE INTO users (username, password, localidade, is_admin, is_active)
+            INSERT INTO users (username, password, localidade, is_admin, is_active)
             VALUES
-            ('curitiba_user', ?, 'curitiba', 0, 1),
-            ('sp_user', ?, 'sp', 0, 1),
-            ('admin', ?, 'admin', 1, 1)
-            """
-        , (
-            generate_password_hash('senha_curitiba'),
-            generate_password_hash('senha_sp'),
-            generate_password_hash('admin')
-        ))
+            (%s, %s, %s, %s, %s),
+            (%s, %s, %s, %s, %s),
+            (%s, %s, %s, %s, %s)
+            """,
+            (
+                'curitiba_user', generate_password_hash('senha_curitiba'), 'curitiba', False, True,
+                'sp_user', generate_password_hash('senha_sp'), 'sp', False, True,
+                'admin', generate_password_hash('admin'), 'admin', True, True
+            )
+        )
+
     conn.commit()
+    cursor.close()
     conn.close()
-
-
 
 # Função para validar o login
 def check_login(username, password):
     conn = get_db_connection()
-    user = conn.execute(
-        "SELECT * FROM users WHERE username = ?", (username,)
-    ).fetchone()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+    user = cursor.fetchone()
+    cursor.close()
     conn.close()
-    if user and check_password_hash(user["password"], password):
-        if user["is_active"]:
-            return (
-                user["localidade"],
-                user["is_admin"],
-            )  # Retorna a localidade e se é admin
+    
+    if user and check_password_hash(user[2], password):  # user[2] é a coluna password
+        if user[5]:  # user[5] é a coluna is_active
+            return user[3], user[4]  # Retorna localidade (user[3]) e is_admin (user[4])
         else:
             return "blocked", None
     return None, None
 
-
 # Função para adicionar um usuário
 def add_user(username, password, localidade):
     conn = get_db_connection()
-    try:
-        hashed_password = generate_password_hash(password)
-        conn.execute(
-            "INSERT INTO users (username, password, localidade, is_active) VALUES (?, ?, ?, 1)",
-            (username, hashed_password, localidade),
-        )
-        conn.commit()
-    except sqlite3.IntegrityError:
-        return False  # Retorna False se o usuário já existe
-    conn.close()
-    return True
+    cursor = conn.cursor()
 
+    hashed_password = generate_password_hash(password)
+
+    try:
+        cursor.execute("""
+            INSERT INTO users (username, password, localidade, is_admin, is_active)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (username, hashed_password, localidade, False, True))
+
+        conn.commit()
+    except psycopg2.IntegrityError:
+        conn.rollback()  # Reverter alterações em caso de erro
+        return False  # Retorna False se o usuário já existir
+    finally:
+        cursor.close()
+        conn.close()
+
+    return True
 
 # Função para garantir que a pasta da localidade exista
 def ensure_localidade_directory(localidade):
@@ -116,7 +128,6 @@ def ensure_localidade_directory(localidade):
             with open(placeholder_path, 'wb') as f:
                 pass  # Cria um arquivo vazio ou adicione uma imagem padrão
     return local_dir
-
 
 # Rota para login
 @app.route("/login", methods=["POST"])
@@ -139,7 +150,6 @@ def login():
     else:
         flash("Nome de usuário ou senha inválidos.", "error")
         return redirect(url_for("index"))
-
 
 # Rota para logout
 @app.route("/logout")
@@ -258,14 +268,16 @@ def admin_dashboard():
 def manage_users():
     if "logged_in" in session and session["is_admin"]:
         conn = get_db_connection()
-        users = conn.execute(
-            "SELECT * FROM users"
-        ).fetchall()  # Busca todos os usuários
-        conn.close()
-        return render_template("manage_users.html", users=users)
+        cursor = conn.cursor()  # Criar um cursor para executar consultas
+        cursor.execute("SELECT id, username, localidade, is_admin, is_active FROM users")  # Executar a consulta através do cursor
+        users = cursor.fetchall()  # Buscar todos os resultados
+        cursor.close()  # Fechar o cursor
+        conn.close()  # Fechar a conexão
+        return render_template("manage_users.html", users=users)  # Passar os usuários como tuplas
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
+
 
 
 # Rota para deletar usuário
