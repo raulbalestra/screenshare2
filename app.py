@@ -380,8 +380,14 @@ def add_new_user():
         password = request.form["password"]
         localidade = request.form["localidade"]
 
+        # Verifica se os campos estão preenchidos
+        if not username or not password or not localidade:
+            flash("Todos os campos são obrigatórios!", "error")
+            return redirect(url_for("add_new_user"))
+
         conn = get_db_connection()
         cursor = conn.cursor()
+
         try:
             hashed_password = generate_password_hash(password)
             cursor.execute(
@@ -389,7 +395,7 @@ def add_new_user():
                 INSERT INTO users (username, password, localidade, is_admin, is_active)
                 VALUES (%s, %s, %s, %s, %s)
                 """,
-                (username, hashed_password, localidade, False, True),
+                (username, hashed_password, localidade, False, True)
             )
             conn.commit()
             flash("Usuário adicionado com sucesso!", "success")
