@@ -1,279 +1,310 @@
-<!-- templates/add_user.html -->
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Adicionar Novo Usuário</title>
     <!-- Importando uma fonte moderna do Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
     <!-- Importando Font Awesome para ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
     <style>
-        /* Reset básico */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+      /* Reset básico */
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-        body {
-            font-family: 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #6B73FF 0%, #000DFF 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: #333;
-            padding: 20px;
-        }
+      body {
+        font-family: "Roboto", sans-serif;
+        background: linear-gradient(135deg, #6b73ff 0%, #000dff 100%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        color: #333;
+        padding: 20px;
+      }
 
-        /* Container principal */
+      /* Container principal */
+      .container {
+        background-color: #fff;
+        border-radius: 15px;
+        padding: 40px 30px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        max-width: 500px;
+        width: 100%;
+        text-align: center;
+        animation: fadeIn 0.6s ease-in-out;
+        position: relative;
+      }
+
+      h2 {
+        margin-bottom: 30px;
+        color: #4a90e2;
+        font-size: 2em;
+        font-weight: 500;
+      }
+
+      /* Estilos para mensagens flash */
+      .flash-messages {
+        margin-bottom: 20px;
+        list-style: none;
+        padding: 0;
+      }
+
+      .flash-messages li {
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        color: #fff;
+        animation: slideDown 0.5s ease-in-out;
+      }
+
+      .flash-messages li.success {
+        background-color: #28a745;
+      }
+
+      .flash-messages li.error {
+        background-color: #dc3545;
+      }
+
+      /* Estilos para o formulário */
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        position: relative;
+      }
+
+      .input-group {
+        position: relative;
+      }
+
+      label {
+        text-align: left;
+        font-weight: 500;
+        margin-bottom: 8px;
+        font-size: 0.95em;
+        color: #555;
+      }
+
+      input[type="text"],
+      input[type="password"] {
+        width: 100%;
+        padding: 12px 40px 12px 15px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        font-size: 1em;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      }
+
+      input[type="text"]:focus,
+      input[type="password"]:focus {
+        border-color: #4a90e2;
+        box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+        outline: none;
+      }
+
+      /* Ícones dentro dos campos de entrada */
+      .input-group .fa {
+        position: absolute;
+        top: 42px;
+        right: 15px;
+        color: #aaa;
+        transition: color 0.3s ease;
+        cursor: pointer;
+        font-size: 1.2em;
+      }
+
+      .input-group .fa:hover {
+        color: #4a90e2;
+      }
+
+      /* Estilos dos botões */
+      button {
+        width: 100%;
+        padding: 14px 0;
+        background-color: #28a745;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1em;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.2s ease,
+          box-shadow 0.3s ease;
+      }
+
+      button:hover {
+        background-color: #218838;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      /* Link para voltar */
+      a.back-link {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 10px 20px;
+        background-color: #6c757d;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 50px;
+        transition: background-color 0.3s ease, transform 0.2s ease,
+          box-shadow 0.3s ease;
+      }
+
+      a.back-link:hover {
+        background-color: #5a6268;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      /* Responsividade */
+      @media (max-width: 480px) {
         .container {
-            background-color: #fff;
-            border-radius: 15px;
-            padding: 40px 30px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-            max-width: 500px;
-            width: 100%;
-            text-align: center;
-            animation: fadeIn 0.6s ease-in-out;
-            position: relative;
+          padding: 30px 20px;
+          width: 90%;
         }
 
         h2 {
-            margin-bottom: 30px;
-            color: #4a90e2;
-            font-size: 2em;
-            font-weight: 500;
+          font-size: 1.5em;
         }
 
-        /* Estilos para mensagens flash */
-        .flash-messages {
-            margin-bottom: 20px;
-            list-style: none;
-            padding: 0;
-        }
-
-        .flash-messages li {
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            color: #fff;
-            animation: slideDown 0.5s ease-in-out;
-        }
-
-        .flash-messages li.success {
-            background-color: #28a745;
-        }
-
-        .flash-messages li.error {
-            background-color: #dc3545;
-        }
-
-        /* Estilos para o formulário */
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            position: relative;
-        }
-
-        .input-group {
-            position: relative;
-        }
-
-        label {
-            text-align: left;
-            font-weight: 500;
-            margin-bottom: 8px;
-            font-size: 0.95em;
-            color: #555;
-        }
-
-        input[type="text"],
-        input[type="password"] {
-            width: 100%;
-            padding: 12px 40px 12px 15px;
-            border: 1px solid #ccc;
-            border-radius: 8px;
-            font-size: 1em;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        input[type="text"]:focus,
-        input[type="password"]:focus {
-            border-color: #4a90e2;
-            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
-            outline: none;
-        }
-
-        /* Ícones dentro dos campos de entrada */
-        .input-group .fa {
-            position: absolute;
-            top: 42px;
-            right: 15px;
-            color: #aaa;
-            transition: color 0.3s ease;
-            cursor: pointer;
-            font-size: 1.2em;
-        }
-
-        .input-group .fa:hover {
-            color: #4a90e2;
-        }
-
-        /* Estilos dos botões */
-        button {
-            width: 100%;
-            padding: 14px 0;
-            background-color: #28a745;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1em;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-        }
-
-        button:hover {
-            background-color: #218838;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Link para voltar */
+        button,
         a.back-link {
-            display: inline-block;
-            margin-top: 20px;
-            padding: 10px 20px;
-            background-color: #6c757d;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 50px;
-            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+          font-size: 0.95em;
+          padding: 12px 0;
         }
 
-        a.back-link:hover {
-            background-color: #5a6268;
-            transform: translateY(-2px);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        .input-group .fa {
+          top: 38px;
+          font-size: 1em;
         }
+      }
 
-        /* Responsividade */
-        @media (max-width: 480px) {
-            .container {
-                padding: 30px 20px;
-                width: 90%;
-            }
-
-            h2 {
-                font-size: 1.5em;
-            }
-
-            button, a.back-link {
-                font-size: 0.95em;
-                padding: 12px 0;
-            }
-
-            .input-group .fa {
-                top: 38px;
-                font-size: 1em;
-            }
+      /* Animações */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
         }
-
-        /* Animações */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
+        to {
+          opacity: 1;
+          transform: scale(1);
         }
+      }
 
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
         }
-
-        /* Estilos para as mensagens de alerta */
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 1em;
+        to {
+          opacity: 1;
+          transform: translateY(0);
         }
-
-        .alert.success {
-            background-color: #28a745;
-            color: #fff;
-        }
-
-        .alert.error {
-            background-color: #dc3545;
-            color: #fff;
-        }
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <h2>Adicionar Novo Usuário</h2>
+      <h2>Adicionar Novo Usuário</h2>
 
-        <!-- Bloco para exibir as mensagens flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            <ul class="flash-messages">
-              {% for category, message in messages %}
-                <li class="{{ category }}">{{ message }}</li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-        {% endwith %}
+      <!-- Bloco para exibir as mensagens flash -->
+      {% with messages = get_flashed_messages(with_categories=true) %} {% if messages %}
+      <ul class="flash-messages">
+        {% for category, message in messages %}
+        <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %} {% endwith %}
 
-        <form method="POST" action="{{ url_for('add_new_user') }}">
-            <div class="input-group">
-                <label for="username">Nome de Usuário:</label>
-                <input type="text" id="username" name="username" required placeholder="Digite o nome de usuário">
-                <i class="fas fa-user"></i>
-            </div>
+      <form method="POST" action="{{ url_for('add_new_user') }}" id="addUserForm">
+        <div class="input-group">
+          <label for="username">Nome de Usuário:</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            required
+            placeholder="Digite o nome de usuário"
+            minlength="3"
+          />
+          <i class="fas fa-user"></i>
+        </div>
 
-            <div class="input-group">
-                <label for="password">Senha:</label>
-                <input type="password" id="password" name="password" required placeholder="Digite a senha">
-                <i class="fas fa-lock toggle-password" onclick="togglePasswordVisibility(event)"></i>
-            </div>
+        <div class="input-group">
+          <label for="password">Senha:</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            required
+            placeholder="Digite a senha"
+          />
+          <i
+            class="fas fa-lock toggle-password"
+            onclick="togglePasswordVisibility(event)"
+          ></i>
+        </div>
 
-            <div class="input-group">
-                <label for="localidade">Localidade:</label>
-                <!-- Substituição do dropdown por um campo de entrada -->
-                <input type="text" id="localidade" name="localidade" required placeholder="Digite a região do usuário">
-                <i class="fas fa-map-marker-alt"></i>
-            </div>
+        <div class="input-group">
+          <label for="localidade">Localidade:</label>
+          <input
+            type="text"
+            id="localidade"
+            name="localidade"
+            required
+            placeholder="Digite a região do usuário"
+          />
+          <i class="fas fa-map-marker-alt"></i>
+        </div>
 
-            <button type="submit">Adicionar Usuário</button>
-        </form>
-        <a href="{{ url_for('admin_dashboard') }}" class="back-link">Voltar para o Painel de Administração</a>
+        <button type="submit">Adicionar Usuário</button>
+      </form>
+      <a href="{{ url_for('admin_dashboard') }}" class="back-link">Voltar para o Painel de Administração</a>
     </div>
 
     <!-- Script para Mostrar/Ocultar Senha -->
     <script>
-        function togglePasswordVisibility(event) {
-            const icon = event.target;
-            const input = icon.previousElementSibling;
-            if (input.type === "password") {
-                input.type = "text";
-                icon.classList.remove('fa-lock');
-                icon.classList.add('fa-lock-open');
-            } else {
-                input.type = "password";
-                icon.classList.remove('fa-lock-open');
-                icon.classList.add('fa-lock');
-            }
+      function togglePasswordVisibility(event) {
+        const icon = event.target;
+        const input = icon.previousElementSibling;
+        if (input.type === "password") {
+          input.type = "text";
+          icon.classList.remove("fa-lock");
+          icon.classList.add("fa-lock-open");
+        } else {
+          input.type = "password";
+          icon.classList.remove("fa-lock-open");
+          icon.classList.add("fa-lock");
         }
+      }
 
-        // Adiciona eventos de clique aos ícones de senha
-        document.querySelectorAll('.toggle-password').forEach(icon => {
-            icon.addEventListener('click', togglePasswordVisibility);
+      // Validação simples de senha no frontend
+      document
+        .getElementById("addUserForm")
+        .addEventListener("submit", function (event) {
+          const password = document.getElementById("password").value;
+          const minLength = 6;
+
+          if (password.length < minLength) {
+            alert(`A senha deve ter pelo menos ${minLength} caracteres.`);
+            event.preventDefault(); // Evita o envio do formulário
+          }
         });
     </script>
-</body>
+  </body>
 </html>
