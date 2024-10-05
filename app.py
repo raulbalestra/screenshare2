@@ -40,21 +40,19 @@ def get_db_connection():
     return conn
 
 
-# Função para criar a tabela de usuários no banco de dados PostgreSQL
 def create_database():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    localidade VARCHAR(100) NOT NULL,
-    is_admin BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT TRUE
-);
-
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL,
+            localidade VARCHAR(100) NOT NULL,
+            is_admin BOOLEAN DEFAULT FALSE,
+            is_active BOOLEAN DEFAULT TRUE
+        );
         """
     )
 
@@ -94,6 +92,7 @@ def create_database():
     conn.commit()
     cursor.close()
     conn.close()
+
 
 
 # Função para validar o login
