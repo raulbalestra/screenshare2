@@ -336,21 +336,25 @@
         <tbody>
           {% for user in users %}
           <tr>
-            <td>{{ user[0] }}</td>
-            <td>{{ user[1] }}</td>
-            <td>{{ user[2] | capitalize }}</td>
-            <td>{{ 'Sim' if user[3] else 'Não' }}</td>
-            <td>{{ 'Sim' if user[4] else 'Não' }}</td>
+            <!-- Exibir o ID como string -->
+            <td>{{ user._id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.localidade | capitalize }}</td>
+            <td>{{ 'Sim' if user.is_admin else 'Não' }}</td>
+            <td>{{ 'Sim' if user.is_active else 'Não' }}</td>
             <td>
-              {% if not user[3] %}
+              {% if not user.is_admin %}
+              <!-- Alterar Senha -->
               <a
-                href="{{ url_for('admin_change_password', user_id=user[0]) }}"
+                href="{{ url_for('admin_change_password', user_id=user._id|string) }}"
                 class="button"
                 ><i class="fas fa-key"></i> Alterar Senha</a
               >
-              {% if user[4] %}
+              
+              <!-- Bloquear/Desbloquear Usuário -->
+              {% if user.is_active %}
               <form
-                action="{{ url_for('block_user', user_id=user[0]) }}"
+                action="{{ url_for('block_user', user_id=user._id|string) }}"
                 method="POST"
                 style="display: inline"
               >
@@ -360,7 +364,7 @@
               </form>
               {% else %}
               <form
-                action="{{ url_for('unblock_user', user_id=user[0]) }}"
+                action="{{ url_for('unblock_user', user_id=user._id|string) }}"
                 method="POST"
                 style="display: inline"
               >
@@ -369,8 +373,10 @@
                 </button>
               </form>
               {% endif %}
+              
+              <!-- Excluir Usuário -->
               <form
-                action="{{ url_for('delete_user', user_id=user[0]) }}"
+                action="{{ url_for('delete_user', user_id=user._id|string) }}"
                 method="POST"
                 style="display: inline"
                 onsubmit="return confirm('Tem certeza que deseja excluir este usuário?');"
