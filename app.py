@@ -1,5 +1,5 @@
 import os
-import psycopg2
+import sqlite3
 from flask import (
     Flask,
     flash,
@@ -25,33 +25,28 @@ app.secret_key = "sua_chave_secreta_aqui"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 IMAGE_DIR = os.path.join(BASE_DIR, "static", "images")
 
+# Caminho para o banco de dados SQLite
+DATABASE = os.path.join(BASE_DIR, "database.db")
 
+# Função para obter a conexão com o banco de dados SQLite
 def get_db_connection():
-    conn = psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        database=os.getenv("DB_NAME", "nome_do_banco"),
-        user=os.getenv("DB_USER", "usuario"),
-        password=os.getenv("DB_PASSWORD", "senha"),
-        port=os.getenv(
-            "DB_PORT", "5432"
-        ),  # Verifique se este valor no .env é apenas um número
-        sslmode="require",  # Certifique-se de que o SSL está habilitado, se necessário
-    )
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row  # Para acessar os resultados como dicionário
     return conn
 
-
+# Função para criar o banco de dados e tabelas se ainda não existirem
 def create_database():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS users (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             localidade VARCHAR(100) NOT NULL,
-            is_admin BOOLEAN DEFAULT FALSE,
-            is_active BOOLEAN DEFAULT TRUE
+            is_admin BOOLEAN DEFAULT 0,
+            is_active BOOLEAN DEFAULT 1
         );
         """
     )
@@ -65,27 +60,14 @@ def create_database():
         cursor.execute(
             """
             INSERT INTO users (username, password, localidade, is_admin, is_active)
-            VALUES
-            (%s, %s, %s, %s, %s),
-            (%s, %s, %s, %s, %s),
-            (%s, %s, %s, %s, %s)
+            VALUES (?, ?, ?, ?, ?),
+                   (?, ?, ?, ?, ?),
+                   (?, ?, ?, ?, ?)
             """,
             (
-                "curitiba_user",
-                generate_password_hash("senha_curitiba"),
-                "curitiba",
-                False,
-                True,
-                "sp_user",
-                generate_password_hash("senha_sp"),
-                "sp",
-                False,
-                True,
-                "admin",
-                generate_password_hash("admin"),
-                "admin",
-                True,
-                True,
+                "curitiba_user", generate_password_hash("senha_curitiba"), "curitiba", False, True,
+                "sp_user", generate_password_hash("senha_sp"), "sp", False, True,
+                "admin", generate_password_hash("admin"), "admin", True, True,
             ),
         )
 
@@ -93,24 +75,21 @@ def create_database():
     cursor.close()
     conn.close()
 
-
-
 # Função para validar o login
 def check_login(username, password):
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
     user = cursor.fetchone()
     cursor.close()
     conn.close()
 
-    if user and check_password_hash(user[2], password):  # user[2] é a coluna password
-        if user[5]:  # user[5] é a coluna is_active
-            return user[3], user[4]  # Retorna localidade (user[3]) e is_admin (user[4])
+    if user and check_password_hash(user["password"], password):  # user["password"] é a coluna password
+        if user["is_active"]:  # user["is_active"] é a coluna is_active
+            return user["localidade"], user["is_admin"]  # Retorna localidade e is_admin
         else:
             return "blocked", None
     return None, None
-
 
 # Função para adicionar um usuário
 def add_user(username, password, localidade):
@@ -123,13 +102,13 @@ def add_user(username, password, localidade):
         cursor.execute(
             """
             INSERT INTO users (username, password, localidade, is_admin, is_active)
-            VALUES (%s, %s, %s, %s, %s)
-        """,
+            VALUES (?, ?, ?, ?, ?)
+            """,
             (username, hashed_password, localidade, False, True),
         )
 
         conn.commit()
-    except psycopg2.IntegrityError:
+    except sqlite3.IntegrityError:
         conn.rollback()  # Reverter alterações em caso de erro
         return False  # Retorna False se o usuário já existir
     finally:
@@ -137,7 +116,6 @@ def add_user(username, password, localidade):
         conn.close()
 
     return True
-
 
 # Função para garantir que a pasta da localidade exista
 def ensure_localidade_directory(localidade):
@@ -294,16 +272,14 @@ def admin_dashboard():
 def manage_users():
     if "logged_in" in session and session["is_admin"]:
         conn = get_db_connection()
-        cursor = conn.cursor()  # Criar um cursor para executar consultas
+        cursor = conn.cursor()
         cursor.execute(
             "SELECT id, username, localidade, is_admin, is_active FROM users"
-        )  # Executar a consulta através do cursor
-        users = cursor.fetchall()  # Buscar todos os resultados
-        cursor.close()  # Fechar o cursor
-        conn.close()  # Fechar a conexão
-        return render_template(
-            "manage_users.html", users=users
-        )  # Passar os usuários como tuplas
+        )
+        users = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template("manage_users.html", users=users)
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
@@ -315,7 +291,7 @@ def delete_user(user_id):
     if "logged_in" in session and session["is_admin"]:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
         conn.commit()
         cursor.close()
         conn.close()
@@ -334,7 +310,7 @@ def block_user(user_id):
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "UPDATE users SET is_active = %s WHERE id = %s", (False, user_id)
+                "UPDATE users SET is_active = ? WHERE id = ?", (False, user_id)
             )
             conn.commit()
             flash("Usuário bloqueado com sucesso!", "success")
@@ -357,7 +333,7 @@ def unblock_user(user_id):
         cursor = conn.cursor()
         try:
             cursor.execute(
-                "UPDATE users SET is_active = %s WHERE id = %s", (True, user_id)
+                "UPDATE users SET is_active = ? WHERE id = ?", (True, user_id)
             )
             conn.commit()
             flash("Usuário desbloqueado com sucesso!", "success")
@@ -392,13 +368,13 @@ def add_new_user():
             cursor.execute(
                 """
                 INSERT INTO users (username, password, localidade, is_admin, is_active)
-                VALUES (%s, %s, %s, %s, %s)
+                VALUES (?, ?, ?, ?, ?)
                 """,
                 (username, hashed_password, localidade, False, True)
             )
             conn.commit()
             flash("Usuário adicionado com sucesso!", "success")
-        except psycopg2.IntegrityError:
+        except sqlite3.IntegrityError:
             conn.rollback()
             flash("Erro: Nome de usuário já existe!", "error")
         except Exception as e:
@@ -418,7 +394,7 @@ def admin_change_password(user_id):
     if "logged_in" in session and session.get("is_admin"):
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM users WHERE id = %s", (user_id,))
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         user = cursor.fetchone()
         if not user:
             cursor.close()
@@ -445,11 +421,11 @@ def admin_change_password(user_id):
             try:
                 hashed_password = generate_password_hash(new_password)
                 cursor.execute(
-                    "UPDATE users SET password = %s WHERE id = %s",
+                    "UPDATE users SET password = ? WHERE id = ?",
                     (hashed_password, user_id),
                 )
                 conn.commit()
-                flash(f"Senha do usuário {user[1]} atualizada com sucesso.", "success")
+                flash(f"Senha do usuário {user['username']} atualizada com sucesso.", "success")
                 return redirect(url_for("manage_users"))
             except Exception as e:
                 flash(f"Erro ao atualizar a senha: {str(e)}", "error")
@@ -483,13 +459,13 @@ def admin_change_own_password():
 
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+            cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
             user = cursor.fetchone()
-            if user and check_password_hash(user[2], current_password):
+            if user and check_password_hash(user["password"], current_password):
                 try:
                     hashed_password = generate_password_hash(new_password)
                     cursor.execute(
-                        "UPDATE users SET password = %s WHERE username = %s",
+                        "UPDATE users SET password = ? WHERE username = ?",
                         (hashed_password, username),
                     )
                     conn.commit()
@@ -531,13 +507,13 @@ def change_password():
 
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+            cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
             user = cursor.fetchone()
             if user:
                 try:
                     hashed_password = generate_password_hash(new_password)
                     cursor.execute(
-                        "UPDATE users SET password = %s WHERE username = %s",
+                        "UPDATE users SET password = ? WHERE username = ?",
                         (hashed_password, username),
                     )
                     conn.commit()
