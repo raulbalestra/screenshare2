@@ -212,6 +212,16 @@ def clear_cache_route(localidade):
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
+@app.route("/admin_dashboard")
+def admin_dashboard():
+    if "logged_in" in session and session.get("is_admin"):
+        return render_template("admin.html")
+    return redirect(url_for("index"))
+
+@app.route("/<localidade>/tela")
+def view_screen_by_region(localidade):
+    return render_template("tela.html", localidade=localidade)
+
 # Inicializar o banco de dados
 create_database()
 
