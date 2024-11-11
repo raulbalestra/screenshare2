@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <!-- Importando uma fonte moderna do Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Importando Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Variáveis de Cores */
+        :root {
+            --primary-color: #4a90e2;
+            --accent-color: #28a745;
+            --error-color: #dc3545;
+            --text-color: #333333;
+            --background-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --container-bg: rgba(255, 255, 255, 0.9);
+            --input-bg-color: #f9f9f9;
+            --input-border-color: #cccccc;
+            --input-focus-border-color: #4a90e2;
+            --button-bg-color: #4a90e2;
+            --button-hover-bg-color: #357ABD;
+            --button-active-bg-color: #2a65a0;
+            --font-family: 'Roboto', sans-serif;
+            --transition-speed: 0.3s;
+            --border-radius: 15px;
+            --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Reset Básico */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background: var(--background-gradient);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: var(--text-color);
+            overflow: hidden;
+        }
+
+        /* Container Principal */
+        .container {
+            background-color: var(--container-bg);
+            border-radius: var(--border-radius);
+            padding: 50px 40px;
+            box-shadow: var(--box-shadow);
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+            animation: fadeIn 0.6s ease-in-out;
+            position: relative;
+        }
+
+        /* Elemento Decorativo */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 80px;
+            background-color: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 36px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Título */
+        h2 {
+            margin-bottom: 30px;
+            color: var(--primary-color);
+            font-size: 1.8em;
+            font-weight: 500;
+            position: relative;
+        }
+
+        h2::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background-color: var(--primary-color);
+            margin: 10px auto 0;
+            border-radius: 2px;
+        }
+
+        /* Estilos para mensagens flash */
+        .flash-messages {
+            margin-bottom: 20px;
+            list-style: none;
+            padding: 0;
+        }
+
+        .flash-messages li {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            color: #fff;
+            animation: slideDown 0.5s ease-in-out;
+        }
+
+        .flash-messages li.success {
+            background-color: var(--accent-color);
+        }
+
+        .flash-messages li.error {
+            background-color: var(--error-color);
+        }
+
+        /* Estilos para o formulário */
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .input-group {
+            position: relative;
+        }
+
+        label {
+            text-align: left;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px 40px 12px 15px;
+            border: 1px solid var(--input-border-color);
+            border-radius: 8px;
+            background-color: var(--input-bg-color);
+            font-size: 1em;
+            transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: var(--input-focus-border-color);
+            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
+            outline: none;
+        }
+
+        /* Ícones dentro dos campos de entrada */
+        .input-group .fa {
+            position: absolute;
+            top: 42px;
+            right: 15px;
+            color: #aaa;
+            transition: color var(--transition-speed);
+            cursor: pointer;
+        }
+
+        .input-group .fa:hover {
+            color: var(--primary-color);
+        }
+
+        /* Estilos dos botões */
+        input[type="submit"] {
+            width: 100%;
+            padding: 14px 0;
+            background-color: var(--button-bg-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background-color var(--transition-speed), transform 0.2s ease, box-shadow var(--transition-speed);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        input[type="submit"] i {
+            margin-right: 8px;
+        }
+
+        input[type="submit"]:hover {
+            background-color: var(--button-hover-bg-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        input[type="submit"]:active {
+            background-color: var(--button-active-bg-color);
+        }
+
+        /* Link de Esqueceu a Senha */
+        p {
+            margin-top: 20px;
+            font-size: 0.95em;
+            color: #555;
+        }
+
+        a {
+            text-decoration: none;
+            color: var(--primary-color);
+            font-weight: bold;
+            transition: color var(--transition-speed);
+        }
+
+        a:hover {
+            color: #357ABD;
+        }
+
+        /* Animações */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsividade */
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+                width: 90%;
+            }
+
+            h2 {
+                font-size: 1.5em;
+            }
+
+            input[type="submit"] {
+                font-size: 0.95em;
+            }
+
+            .input-group .fa {
+                top: 35px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2><i class="fas fa-sign-in-alt"></i> Login</h2>
+
+        <!-- Bloco para exibir as mensagens flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flash-messages">
+              {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/login">
+            <div class="input-group">
+                <label for="username">Usuário:</label>
+                <input type="text" id="username" name="username" required placeholder="Digite seu usuário">
+                <i class="fas fa-user"></i>
+            </div>
+
+            <div class="input-group">
+                <label for="password">Senha:</label>
+                <input type="password" id="password" name="password" required placeholder="Digite sua senha">
+                <i class="fas fa-eye" onclick="togglePasswordVisibility('password')"></i>
+            </div>
+
+            <input type="submit" value="Entrar">
+        </form>
+    </div>
+
+    <!-- Script para Alternar Mostrar/Ocultar Senha -->
+    <script>
+        function togglePasswordVisibility(fieldId) {
+            const field = document.getElementById(fieldId);
+            const toggleIcon = field.nextElementSibling;
+            if (field.type === "password") {
+                field.type = "text";
+                toggleIcon.classList.remove('fa-eye');
+                toggleIcon.classList.add('fa-eye-slash');
+            } else {
+                field.type = "password";
+                toggleIcon.classList.remove('fa-eye-slash');
+                toggleIcon.classList.add('fa-eye');
+            }
+        }
+    </script>
+</body>
+</html>
