@@ -122,6 +122,36 @@
 
         checkForTransmission();
         setInterval(checkForTransmission, 5000);
+
+        // Script para manter a aba ativa com pings periódicos
+        (function() {
+            function sendPing() {
+                fetch('/keep-alive', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => console.log("Ping enviado com sucesso:", data))
+                    .catch(error => console.error("Erro ao enviar o ping:", error));
+            }
+
+            function startPing() {
+                return setInterval(() => {
+                    if (!document.hasFocus()) {
+                        sendPing();
+                    }
+                }, 30000);
+            }
+
+            let pingInterval = startPing();
+
+            window.addEventListener('focus', () => {
+                clearInterval(pingInterval);
+                console.log("A aba está em foco. Pings pausados.");
+            });
+
+            window.addEventListener('blur', () => {
+                pingInterval = startPing();
+                console.log("A aba saiu de foco. Pings retomados.");
+            });
+        })();
     </script>
 </body>
 </html>
