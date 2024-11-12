@@ -596,6 +596,12 @@ def clear_cache(localidade):
 def page_not_found(e):
     return render_template("404.html"), 404
 
+# Rota para manter compartilhamentro ativo mesmo se o sistema for minimizado ou trocar de aba 
+@app.route("/ping", methods=["POST"])
+def ping():
+    session["last_ping"] = time.time()  # Atualiza o tempo da última atividade
+    return jsonify({"status": "active"}), 200
+
 
 # Página de erro 500 - Erro interno do servidor
 @app.errorhandler(500)
