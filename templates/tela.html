@@ -84,7 +84,7 @@
                 screenImage.src = imageUrl;
                 screenImage.style.display = 'block';
                 messageDiv.style.display = 'none';
-                startUpdatingScreen();
+                longPoll(); // Inicia o Long Polling quando a transmissão começa
             }
             img.onerror = function() {
                 screenImage.style.display = 'none';
@@ -94,21 +94,31 @@
             img.src = imageUrl;
         }
 
-        function updateScreen() {
+        function longPoll() {
             if (!localidade) return;
-            const imageUrl = baseImageUrl + localidade + "/screen.png?random=" + new Date().getTime();
-            screenImage.src = imageUrl; 
+
+            const imageUrl = baseImageUrl + localidade + "/screen.png?timestamp=" + new Date().getTime();
+
+            fetch(imageUrl)
+                .then(response => {
+                    if (response.ok) {
+                        screenImage.src = imageUrl;
+                        screenImage.style.display = 'block';
+                        messageDiv.style.display = 'none';
+                    } else {
+                        screenImage.style.display = 'none';
+                        messageDiv.style.display = 'block';
+                        messageDiv.textContent = "A transmissão não começou ainda.";
+                    }
+                    longPoll(); // Reenvia o Long Polling para nova atualização
+                })
+                .catch(() => {
+                    setTimeout(longPoll, 5000); // Em caso de erro, aguarda 5 segundos antes de tentar novamente
+                });
         }
 
-        let updateInterval;
-
-        function startUpdatingScreen() {
-            if (updateInterval) return;
-            updateInterval = setInterval(updateScreen, 1000);
-        }
-
+        // Verifica inicialmente se a transmissão já começou
         checkForTransmission();
-        setInterval(checkForTransmission, 5000);
 
         // Script para manter a aba ativa com pings periódicos
         (function() {
