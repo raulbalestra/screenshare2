@@ -6,7 +6,6 @@
     <title>Compartilhar Tela</title>
     <!-- Importando uma fonte moderna do Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    
     <!-- Importando o Font Awesome com o hash correto ou sem o atributo de integridade -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
@@ -320,7 +319,7 @@
                     if (!document.hasFocus()) {
                         sendPing();
                     }
-                }, 30000);
+                }, 120000); // Intervalo aumentado para 2 minutos
             }
 
             let pingInterval = startPing();
