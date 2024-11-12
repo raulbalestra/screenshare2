@@ -4,11 +4,11 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Compartilhar Tela</title>
-     <!-- Importando uma fonte moderna do Google Fonts -->
-     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Importando uma fonte moderna do Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     
-     <!-- Importando o Font Awesome com o hash correto ou sem o atributo de integridade -->
-     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Importando o Font Awesome com o hash correto ou sem o atributo de integridade -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         /* Reset básico */
         * {
@@ -305,6 +305,36 @@
                 alert("Não foi possível copiar o link automaticamente. Por favor, copie manualmente.");
             });
         }
+
+        // Script para manter a aba ativa com pings periódicos
+        (function() {
+            function sendPing() {
+                fetch('/keep-alive', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => console.log("Ping enviado com sucesso:", data))
+                    .catch(error => console.error("Erro ao enviar o ping:", error));
+            }
+
+            function startPing() {
+                return setInterval(() => {
+                    if (!document.hasFocus()) {
+                        sendPing();
+                    }
+                }, 30000);
+            }
+
+            let pingInterval = startPing();
+
+            window.addEventListener('focus', () => {
+                clearInterval(pingInterval);
+                console.log("A aba está em foco. Pings pausados.");
+            });
+
+            window.addEventListener('blur', () => {
+                pingInterval = startPing();
+                console.log("A aba saiu de foco. Pings retomados.");
+            });
+        })();
     </script>
 </body>
 </html>
