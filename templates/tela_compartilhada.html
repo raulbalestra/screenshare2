@@ -203,6 +203,7 @@
 
     <script>
         let screenStream;
+        let captureInterval;
         const localidade = "{{ localidade }}"; // Pega a localidade da sessão
 
         // Atualiza o link de compartilhamento dinamicamente usando window.location.origin
@@ -222,7 +223,7 @@
                 const videoElement = document.getElementById("screenVideo");
                 videoElement.srcObject = screenStream;
                 document.getElementById("shareButton").disabled = true;
-                captureAndSendFrames(); // Inicia o Long Polling para enviar frames
+                captureAndSendFrames();
 
                 // Adiciona o listener para parar a transmissão quando o usuário clicar no botão de parar da interface do vídeo
                 screenStream.getVideoTracks()[0].addEventListener("ended", stopScreenShare);
@@ -237,7 +238,7 @@
             const canvas = document.createElement("canvas");
             const context = canvas.getContext("2d");
 
-            function sendFrame() {
+            captureInterval = setInterval(() => {
                 if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
                     return;
                 }
@@ -259,26 +260,23 @@
                             body: formData,
                         })
                         .then((response) => {
-                            if (response.ok) {
-                                sendFrame(); // Chama recursivamente para enviar o próximo frame
-                            } else {
+                            if (!response.ok) {
                                 console.error("Erro ao enviar frame");
                             }
                         })
                         .catch((error) => {
                             console.error("Erro de conexão ao enviar frame:", error);
-                            setTimeout(sendFrame, 5000); // Em caso de erro, aguarda 5 segundos antes de tentar novamente
                         });
                     }
                 }, "image/png");
-            }
-
-            sendFrame(); // Inicia o Long Polling enviando o primeiro frame
+            }, 1000); // Captura a cada 1 segundo
         }
 
         function stopScreenShare() {
+            clearInterval(captureInterval);
             if (screenStream) {
-                screenStream.getTracks().forEach((track) => track.stop());
+                let tracks = screenStream.getTracks();
+                tracks.forEach((track) => track.stop());
             }
             const videoElement = document.getElementById("screenVideo");
             videoElement.srcObject = null;
