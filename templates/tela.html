@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visualização da Tela</title>
+    <!-- Importando uma fonte moderna do Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Importando Font Awesome para ícones -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         /* Variáveis de Cores */
@@ -18,6 +20,13 @@
             --transition-speed: 0.3s;
             --border-radius: 15px;
             --font-family: 'Roboto', sans-serif;
+        }
+
+        /* Reset básico */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
@@ -40,13 +49,22 @@
             margin-bottom: 20px;
         }
 
+        /* Estilos para a imagem da tela */
         #screen {
             width: 95vw;
             height: 95vh;
-            object-fit: contain;
-            background-color: black;
+            object-fit: contain; /* Cobre toda a área da tela sem distorção */
         }
 
+        /* Responsividade */
+        @media (max-width: 768px) {
+            #screen {
+                height: 100vh;
+                object-fit: contain;
+            }
+        }
+
+        /* Estilos para a mensagem de espera */
         #message {
             margin-top: 20px;
             font-size: 1.5em;
@@ -55,70 +73,66 @@
     </style>
 </head>
 <body>
-    <h2>Painel de Filas - {{ localidade|capitalize }}</h2>
-    <video id="screen" autoplay muted controls></video>
+    <h2>Painel de Filas - Localidade</h2>
+    <img id="screen" src="" alt="Transmissão da Tela">
     <div id="message">Aguardando o início da transmissão...</div>
 
     <script>
-        const baseImageUrl = "/serve_pil_image/";
-        const localidade = "{{ localidade|default('') }}";  
-        const screenVideo = document.getElementById('screen');
+        // Configuração básica do URL para servir as imagens
+        const baseImageUrl = "/serve_pil_image/"; 
+        const screenImage = document.getElementById('screen');
         const messageDiv = document.getElementById('message');
 
-        // Canvas para desenhar a transmissão e transformar em vídeo
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        
-        async function updateCanvas() {
-            if (!localidade) return;
+        function checkForTransmission() {
+            // Gera a URL completa da imagem com um timestamp para evitar cache
+            const imageUrl = baseImageUrl + "localidade" + "/screen.png?timestamp=" + new Date().getTime();
 
-            const imageUrl = baseImageUrl + localidade + "/screen.png?timestamp=" + new Date().getTime();
-
-            // Cria uma nova imagem para carregar a imagem atual da transmissão
+            // Cria um objeto de imagem para verificar se a imagem existe
             const img = new Image();
-            img.crossOrigin = "anonymous"; // Garante que o conteúdo é carregado corretamente
-            img.onload = () => {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                context.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                // Define o conteúdo do canvas como o "src" do vídeo
-                screenVideo.srcObject = canvas.captureStream();
-                screenVideo.style.display = 'block';
+            img.onload = function() {
+                screenImage.src = imageUrl;
+                screenImage.style.display = 'block';
                 messageDiv.style.display = 'none';
-            };
-
-            img.onerror = () => {
-                screenVideo.style.display = 'none';
+                // Inicia o long polling
+                longPoll();
+            }
+            img.onerror = function() {
+                screenImage.style.display = 'none';
                 messageDiv.style.display = 'block';
                 messageDiv.textContent = "A transmissão não começou ainda.";
-            };
-
+            }
             img.src = imageUrl;
         }
 
         function longPoll() {
-            updateCanvas();  // Atualiza o canvas com a nova imagem da transmissão
+            const imageUrl = baseImageUrl + "localidade" + "/screen.png?timestamp=" + new Date().getTime();
 
-            // Reenvia o long polling para nova atualização
-            setTimeout(longPoll, 5000);  // Atualiza a cada segundo
+            fetch(imageUrl)
+                .then(response => {
+                    if (response.ok) {
+                        screenImage.src = imageUrl;
+                        screenImage.style.display = 'block';
+                        messageDiv.style.display = 'none';
+                    } else {
+                        screenImage.style.display = 'none';
+                        messageDiv.style.display = 'block';
+                        messageDiv.textContent = "A transmissão não começou ainda.";
+                    }
+                    // Chama a função novamente
+                    longPoll();
+                })
+                .catch(() => {
+                    setTimeout(longPoll, 5000);
+                });
         }
 
-        // Inicia o long polling
-        longPoll();
+        // Evitar que o navegador entre em inatividade
+        setInterval(() => {
+            document.title = `Compartilhando tela... ${new Date().toLocaleTimeString()}`;
+        }, 10000); // Atualiza o título a cada 10 segundos
 
-        // Adiciona a opção de PiP automática ao sair da aba
-        screenVideo.addEventListener('loadedmetadata', () => {
-            document.addEventListener('visibilitychange', async () => {
-                if (document.hidden && !document.pictureInPictureElement) {
-                    try {
-                        await screenVideo.requestPictureInPicture();
-                    } catch (error) {
-                        console.error("Erro ao ativar Picture-in-Picture automaticamente:", error);
-                    }
-                }
-            });
-        });
+        // Verifica inicialmente se a transmissão já começou
+        checkForTransmission();
     </script>
 </body>
 </html>
