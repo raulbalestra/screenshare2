@@ -1,4 +1,5 @@
 import os
+import time  # Importação necessária para controle de tempo entre uploads
 import psycopg2
 from flask import (
     Flask,
@@ -25,6 +26,8 @@ app.secret_key = "sua_chave_secreta_aqui"
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 IMAGE_DIR = os.path.join(BASE_DIR, "static", "images")
 
+# Variável para controlar o tempo do último upload para cada localidade
+last_upload_time = {}
 
 def get_db_connection():
     conn = psycopg2.connect(
@@ -32,13 +35,10 @@ def get_db_connection():
         database=os.getenv("DB_NAME", "nome_do_banco"),
         user=os.getenv("DB_USER", "usuario"),
         password=os.getenv("DB_PASSWORD", "senha"),
-        port=os.getenv(
-            "DB_PORT", "5432"
-        ),  # Verifique se este valor no .env é apenas um número
-        sslmode="require",  # Certifique-se de que o SSL está habilitado, se necessário
+        port=os.getenv("DB_PORT", "5432"),
+        sslmode="require",
     )
     return conn
-
 
 def create_database():
     conn = get_db_connection()
@@ -88,12 +88,9 @@ def create_database():
                 True,
             ),
         )
-
     conn.commit()
     cursor.close()
     conn.close()
-
-
 
 # Função para validar o login
 def check_login(username, password):
@@ -110,7 +107,6 @@ def check_login(username, password):
         else:
             return "blocked", None
     return None, None
-
 
 # Função para adicionar um usuário
 def add_user(username, password, localidade):
@@ -138,7 +134,6 @@ def add_user(username, password, localidade):
 
     return True
 
-
 # Função para garantir que a pasta da localidade exista
 def ensure_localidade_directory(localidade):
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
@@ -150,7 +145,6 @@ def ensure_localidade_directory(localidade):
             with open(placeholder_path, "wb") as f:
                 pass  # Cria um arquivo vazio ou adicione uma imagem padrão
     return local_dir
-
 
 # Rota para login
 @app.route("/login", methods=["POST"])
@@ -174,26 +168,39 @@ def login():
         flash("Nome de usuário ou senha inválidos.", "error")
         return redirect(url_for("index"))
 
-
 # Rota para logout
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("index"))
 
-
-# Rota para upload do frame
+# Rota para upload do frame com controle de frequência
 @app.route("/<localidade>/upload_frame", methods=["POST"])
 def upload_frame(localidade):
+    global last_upload_time
+    current_time = time.time()
+    
+    # Define intervalo mínimo de tempo em segundos entre uploads
+    upload_interval = 10  # Ajuste o intervalo conforme necessário (ex.: 10 segundos)
+
     if "logged_in" in session and session.get("localidade") == localidade:
-        # Define o caminho correto para salvar a imagem na pasta da localidade
+        # Verifica se o último upload ocorreu há pelo menos 'upload_interval' segundos
+        if localidade in last_upload_time:
+            elapsed_time = current_time - last_upload_time[localidade]
+            if elapsed_time < upload_interval:
+                print(f"Upload ignorado para {localidade}, intervalo de {upload_interval} segundos ainda não passou.")
+                return "", 204  # Retorna vazio sem atualizar
+
+        # Define o diretório de salvamento da imagem
         local_dir = ensure_localidade_directory(localidade)
         frame_path_local = os.path.join(local_dir, "screen.png")
+        
         if "frame" in request.files:
             frame = request.files["frame"]
             try:
                 frame.save(frame_path_local)
-                print(f"Frame recebido e salvo com sucesso em {frame_path_local}.")
+                last_upload_time[localidade] = current_time  # Atualiza o tempo do último upload
+                print(f"Frame salvo com sucesso em {frame_path_local}.")
             except Exception as e:
                 print(f"Erro ao salvar o frame: {e}")
                 return "", 500
@@ -204,30 +211,21 @@ def upload_frame(localidade):
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
-
 # Rota para servir a imagem do frame
 @app.route("/serve_pil_image/<localidade>/screen.png")
 def serve_pil_image(localidade):
-    # Caminho para a pasta da localidade
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
-
-    # Verifica se a pasta da localidade existe
     if not os.path.isdir(local_dir):
         print(f"Pasta da localidade não encontrada: {local_dir}")
         abort(404, description="Localidade não encontrada.")
 
-    # Caminho completo para o arquivo screen.png
     image_path = os.path.join(local_dir, "screen.png")
-
-    # Verifica se o arquivo screen.png existe
     if not os.path.isfile(image_path):
         print(f"Arquivo de imagem não encontrado no caminho: {image_path}")
         abort(404, description="Imagem não encontrada.")
 
-    # Tentando servir a imagem corretamente
     try:
         response = send_from_directory(local_dir, "screen.png", mimetype="image/png")
-        # Evita cache
         response.headers["Cache-Control"] = (
             "no-cache, no-store, must-revalidate, max-age=0"
         )
@@ -238,24 +236,20 @@ def serve_pil_image(localidade):
         print(f"Erro ao servir a imagem: {e}")
         abort(500, description="Erro ao servir a imagem.")
 
-
 # Rota pública para visualizar a tela (acessível externamente)
 @app.route("/tela")
 def tela():
     return render_template("tela.html")
-
 
 # Rota para renderizar a página de visualização de tela por localidade
 @app.route("/<localidade>/tela")
 def view_screen_by_region(localidade):
     return render_template("tela.html", localidade=localidade)
 
-
 # Rota para compartilhar a tela
 @app.route("/<localidade>/tela-compartilhada")
 def share_screen(localidade):
     if "logged_in" in session and session.get("localidade") == localidade:
-        # Gera o link para visualizar a transmissão dessa localidade
         share_link = url_for(
             "view_screen_by_region", localidade=localidade, _external=True
         )
@@ -270,7 +264,6 @@ def share_screen(localidade):
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
-
 # Página de login
 @app.route("/")
 def index():
@@ -280,7 +273,6 @@ def index():
         return redirect(url_for("share_screen", localidade=session["localidade"]))
     return render_template("login.html")
 
-
 # Rota para o painel do administrador
 @app.route("/admin_dashboard")
 def admin_dashboard():
@@ -288,26 +280,22 @@ def admin_dashboard():
         return render_template("admin.html")
     return redirect(url_for("index"))
 
-
 # Rota para gerenciar usuários
 @app.route("/admin/manage_users")
 def manage_users():
     if "logged_in" in session and session["is_admin"]:
         conn = get_db_connection()
-        cursor = conn.cursor()  # Criar um cursor para executar consultas
+        cursor = conn.cursor()
         cursor.execute(
             "SELECT id, username, localidade, is_admin, is_active FROM users"
-        )  # Executar a consulta através do cursor
-        users = cursor.fetchall()  # Buscar todos os resultados
-        cursor.close()  # Fechar o cursor
-        conn.close()  # Fechar a conexão
-        return render_template(
-            "manage_users.html", users=users
-        )  # Passar os usuários como tuplas
+        )
+        users = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template("manage_users.html", users=users)
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
-
 
 # Rota para deletar usuário
 @app.route("/admin/delete_user/<int:user_id>", methods=["POST"])
@@ -324,7 +312,6 @@ def delete_user(user_id):
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
-
 
 # Rota para bloquear usuário
 @app.route("/admin/block_user/<int:user_id>", methods=["POST"])
@@ -348,7 +335,6 @@ def block_user(user_id):
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
-
 # Rota para desbloquear usuário
 @app.route("/admin/unblock_user/<int:user_id>", methods=["POST"])
 def unblock_user(user_id):
@@ -371,7 +357,6 @@ def unblock_user(user_id):
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
-
 @app.route("/admin/add_user", methods=["GET", "POST"])
 def add_new_user():
     if request.method == "POST":
@@ -379,7 +364,6 @@ def add_new_user():
         password = request.form["password"]
         localidade = request.form["localidade"]
 
-        # Verifica se os campos estão preenchidos
         if not username or not password or not localidade:
             flash("Todos os campos são obrigatórios!", "error")
             return redirect(url_for("add_new_user"))
@@ -410,7 +394,6 @@ def add_new_user():
         return redirect(url_for("manage_users"))
 
     return render_template("add_user.html")
-
 
 # Rota para o administrador alterar a senha de um usuário
 @app.route("/admin/change_password/<int:user_id>", methods=["GET", "POST"])
@@ -462,7 +445,6 @@ def admin_change_password(user_id):
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
-
 # Rota para o administrador alterar sua própria senha
 @app.route("/admin/change_own_password", methods=["GET", "POST"])
 def admin_change_own_password():
@@ -510,7 +492,6 @@ def admin_change_own_password():
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
-
 
 # Rota para o usuário alterar sua própria senha
 @app.route("/change_password", methods=["GET", "POST"])
@@ -560,16 +541,12 @@ def change_password():
 
     return render_template("change_password.html")
 
-
 # Rota para limpar o cache de uma localidade específica
 @app.route("/<localidade>/clear_cache", methods=["POST"])
 def clear_cache(localidade):
-    # Caminho para o arquivo screen.png da localidade
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
     frame_path_local = os.path.join(local_dir, "screen.png")
-    print(
-        f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}"
-    )
+    print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
     print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
     try:
         if os.path.exists(frame_path_local):
@@ -578,30 +555,20 @@ def clear_cache(localidade):
             return jsonify({"message": "Cache limpo com sucesso."}), 200
         else:
             print("[clear_cache] Arquivo não encontrado.")
-            return (
-                jsonify(
-                    {
-                        "message": "Nenhum cache encontrado para a localidade especificada."
-                    }
-                ),
-                404,
-            )
+            return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
     except Exception as e:
         print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
         return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
-
 
 # Página de erro 404 - Página não encontrada
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template("404.html"), 404
 
-
 # Página de erro 500 - Erro interno do servidor
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template("500.html"), 500
-
 
 # Inicializar o banco de dados antes de servir qualquer rota
 create_database()
