@@ -70,6 +70,7 @@
         const localidade = "{{ localidade|default('') }}";  
         const screenImage = document.getElementById('screen');
         const messageDiv = document.getElementById('message');
+        const pipButton = document.getElementById('pipButton');
 
         function checkForTransmission() {
             if (!localidade) {
@@ -129,6 +130,17 @@
                 console.error("Erro ao alternar Picture-in-Picture:", error);
             }
         }
+
+        // Ativar PiP automaticamente ao sair da aba
+        document.addEventListener('visibilitychange', async () => {
+            if (document.hidden && !document.pictureInPictureElement) {
+                try {
+                    await screenImage.requestPictureInPicture();
+                } catch (error) {
+                    console.error("Erro ao ativar Picture-in-Picture automaticamente:", error);
+                }
+            }
+        });
 
         // Verifica inicialmente se a transmissão já começou
         checkForTransmission();
