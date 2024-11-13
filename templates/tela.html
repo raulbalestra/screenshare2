@@ -150,15 +150,17 @@
             }
         }
 
-        // Ativar PiP automaticamente ao sair da aba
-        document.addEventListener('visibilitychange', async () => {
-            if (document.hidden && !document.pictureInPictureElement) {
-                try {
-                    await screenVideo.requestPictureInPicture();
-                } catch (error) {
-                    console.error("Erro ao ativar Picture-in-Picture automaticamente:", error);
+        // Ativar PiP automaticamente ao sair da aba, após metadados do vídeo estarem prontos
+        screenVideo.addEventListener('loadedmetadata', () => {
+            document.addEventListener('visibilitychange', async () => {
+                if (document.hidden && !document.pictureInPictureElement) {
+                    try {
+                        await screenVideo.requestPictureInPicture();
+                    } catch (error) {
+                        console.error("Erro ao ativar Picture-in-Picture automaticamente:", error);
+                    }
                 }
-            }
+            });
         });
 
         // Verifica inicialmente se a transmissão já começou
