@@ -47,29 +47,6 @@
             background-color: black;
         }
 
-        #pipButton {
-            padding: 10px 20px;
-            background-color: var(--button-bg-color);
-            color: white;
-            border: none;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            transition: background-color var(--transition-speed);
-            font-size: 1em;
-            margin-top: 15px;
-        }
-
-        #pipButton:hover {
-            background-color: var(--button-hover-bg-color);
-        }
-
-        @media (max-width: 768px) {
-            #screen {
-                height: 100vh;
-                object-fit: contain;
-            }
-        }
-
         #message {
             margin-top: 20px;
             font-size: 1.5em;
@@ -79,78 +56,58 @@
 </head>
 <body>
     <h2>Painel de Filas - {{ localidade|capitalize }}</h2>
-    <video id="screen" autoplay muted></video>
+    <video id="screen" autoplay muted controls></video>
     <div id="message">Aguardando o início da transmissão...</div>
-    <button id="pipButton" onclick="togglePictureInPicture()">Ativar Picture-in-Picture</button>
 
     <script>
         const baseImageUrl = "/serve_pil_image/";
         const localidade = "{{ localidade|default('') }}";  
         const screenVideo = document.getElementById('screen');
         const messageDiv = document.getElementById('message');
-        const pipButton = document.getElementById('pipButton');
 
-        function checkForTransmission() {
-            if (!localidade) {
-                messageDiv.textContent = "Localidade não especificada.";
-                return;
-            }
-
-            const imageUrl = baseImageUrl + localidade + "/screen.png?timestamp=" + new Date().getTime();
-
-            const img = new Image();
-            img.onload = function() {
-                // Atualiza o src do vídeo para exibir a imagem de transmissão
-                screenVideo.src = imageUrl;
-                screenVideo.style.display = 'block';
-                messageDiv.style.display = 'none';
-                longPoll(); // Inicia o Long Polling quando a transmissão começa
-            }
-            img.onerror = function() {
-                screenVideo.style.display = 'none';
-                messageDiv.style.display = 'block';
-                messageDiv.textContent = "A transmissão não começou ainda.";
-            }
-            img.src = imageUrl;
-        }
-
-        function longPoll() {
+        // Canvas para desenhar a transmissão e transformar em vídeo
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        
+        async function updateCanvas() {
             if (!localidade) return;
 
             const imageUrl = baseImageUrl + localidade + "/screen.png?timestamp=" + new Date().getTime();
 
-            fetch(imageUrl)
-                .then(response => {
-                    if (response.ok) {
-                        screenVideo.src = imageUrl;
-                        screenVideo.style.display = 'block';
-                        messageDiv.style.display = 'none';
-                    } else {
-                        screenVideo.style.display = 'none';
-                        messageDiv.style.display = 'block';
-                        messageDiv.textContent = "A transmissão não começou ainda.";
-                    }
-                    longPoll(); // Reenvia o Long Polling para nova atualização
-                })
-                .catch(() => {
-                    setTimeout(longPoll, 5000); // Em caso de erro, aguarda 5 segundos antes de tentar novamente
-                });
+            // Cria uma nova imagem para carregar a imagem atual da transmissão
+            const img = new Image();
+            img.crossOrigin = "anonymous"; // Garante que o conteúdo é carregado corretamente
+            img.onload = () => {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                context.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                // Define o conteúdo do canvas como o "src" do vídeo
+                screenVideo.srcObject = canvas.captureStream();
+                screenVideo.style.display = 'block';
+                messageDiv.style.display = 'none';
+            };
+
+            img.onerror = () => {
+                screenVideo.style.display = 'none';
+                messageDiv.style.display = 'block';
+                messageDiv.textContent = "A transmissão não começou ainda.";
+            };
+
+            img.src = imageUrl;
         }
 
-        // Função para alternar o modo Picture-in-Picture
-        async function togglePictureInPicture() {
-            try {
-                if (document.pictureInPictureElement) {
-                    await document.exitPictureInPicture();
-                } else {
-                    await screenVideo.requestPictureInPicture();
-                }
-            } catch (error) {
-                console.error("Erro ao alternar Picture-in-Picture:", error);
-            }
+        function longPoll() {
+            updateCanvas();  // Atualiza o canvas com a nova imagem da transmissão
+
+            // Reenvia o long polling para nova atualização
+            setTimeout(longPoll, 1000);  // Atualiza a cada segundo
         }
 
-        // Ativar PiP automaticamente ao sair da aba, após metadados do vídeo estarem prontos
+        // Inicia o long polling
+        longPoll();
+
+        // Adiciona a opção de PiP automática ao sair da aba
         screenVideo.addEventListener('loadedmetadata', () => {
             document.addEventListener('visibilitychange', async () => {
                 if (document.hidden && !document.pictureInPictureElement) {
@@ -162,39 +119,6 @@
                 }
             });
         });
-
-        // Verifica inicialmente se a transmissão já começou
-        checkForTransmission();
-
-        // Script para manter a aba ativa com pings periódicos
-        (function() {
-            function sendPing() {
-                fetch('/keep-alive', { method: 'POST' })
-                    .then(response => response.json())
-                    .then(data => console.log("Ping enviado com sucesso:", data))
-                    .catch(error => console.error("Erro ao enviar o ping:", error));
-            }
-
-            function startPing() {
-                return setInterval(() => {
-                    if (!document.hasFocus()) {
-                        sendPing();
-                    }
-                }, 120000); // Intervalo aumentado para 2 minutos
-            }
-
-            let pingInterval = startPing();
-
-            window.addEventListener('focus', () => {
-                clearInterval(pingInterval);
-                console.log("A aba está em foco. Pings pausados.");
-            });
-
-            window.addEventListener('blur', () => {
-                pingInterval = startPing();
-                console.log("A aba saiu de foco. Pings retomados.");
-            });
-        })();
     </script>
 </body>
 </html>
