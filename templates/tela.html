@@ -53,7 +53,7 @@
         #screen {
             width: 95vw;
             height: 95vh;
-            object-fit: contain; /* Cobre toda a área da tela sem distorção */
+            object-fit: contain;
         }
 
         /* Responsividade */
@@ -126,9 +126,12 @@
                 });
         }
 
-        // Evitar que o navegador entre em inatividade
+        // Função para manter o navegador "ativo" durante a visualização da tela
         setInterval(() => {
             document.title = `Compartilhando tela... ${new Date().toLocaleTimeString()}`;
+            setTimeout(() => {
+                document.title = "Visualização da Tela";
+            }, 500);
         }, 10000); // Atualiza o título a cada 10 segundos
 
         // Verifica inicialmente se a transmissão já começou
