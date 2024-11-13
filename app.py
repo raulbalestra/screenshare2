@@ -181,7 +181,7 @@ def upload_frame(localidade):
     current_time = time.time()
     
     # Define intervalo mínimo de tempo em segundos entre uploads
-    upload_interval = 10  # Ajuste o intervalo conforme necessário (ex.: 10 segundos)
+    upload_interval = 2  # Ajuste o intervalo conforme necessário (ex.: 2 segundos)
 
     if "logged_in" in session and session.get("localidade") == localidade:
         # Verifica se o último upload ocorreu há pelo menos 'upload_interval' segundos
