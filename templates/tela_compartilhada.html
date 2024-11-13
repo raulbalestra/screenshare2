@@ -225,6 +225,13 @@
             document.execCommand('copy');
             alert("Link copiado: " + shareLink.value);
         }
+        // Função para manter o navegador "ativo" durante o compartilhamento de tela
+        setInterval(() => {
+            document.title = "Compartilhando tela... " + new Date().getTime();
+            setTimeout(() => {
+                document.title = "Compartilhar Tela";
+            }, 500);
+        }, 10000); // Executa a cada 10 segundos
     </script>
 </body>
 
