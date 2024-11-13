@@ -117,6 +117,19 @@
                 });
         }
 
+        // Função para alternar o modo Picture-in-Picture
+        async function togglePictureInPicture() {
+            try {
+                if (document.pictureInPictureElement) {
+                    await document.exitPictureInPicture();
+                } else {
+                    await screenImage.requestPictureInPicture();
+                }
+            } catch (error) {
+                console.error("Erro ao alternar Picture-in-Picture:", error);
+            }
+        }
+
         // Verifica inicialmente se a transmissão já começou
         checkForTransmission();
 
