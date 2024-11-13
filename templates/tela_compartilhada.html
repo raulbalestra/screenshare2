@@ -208,7 +208,7 @@
 
         // Atualiza o link de compartilhamento dinamicamente usando window.location.origin
         const shareLinkInput = document.getElementById("shareLink");
-        shareLinkInput.value = `${window.location.origin}/${localidade}/tela`;
+        shareLinkInput.value = ${window.location.origin}/${localidade}/tela;
 
         async function startScreenShare() {
             if (!localidade) {
@@ -255,7 +255,7 @@
                         const formData = new FormData();
                         formData.append("frame", blob, "screen.png");
 
-                        fetch(`/${localidade}/upload_frame`, {
+                        fetch(/${localidade}/upload_frame, {
                             method: "POST",
                             body: formData,
                         })
@@ -282,7 +282,7 @@
             videoElement.srcObject = null;
             document.getElementById("shareButton").disabled = false;
             console.log("Compartilhamento de tela parado.");
-            fetch(`/${localidade}/clear_cache`, {
+            fetch(/${localidade}/clear_cache, {
                 method: "POST",
             })
             .then((response) => response.json())
@@ -305,33 +305,28 @@
             });
         }
 
-        function startPing() {
-            return setInterval(() => {
-                if (!document.hasFocus()) {
-                    sendPing();
-                }
-            }, 120000); // Intervalo aumentado para 2 minutos
-        }
+            }
 
-        let pingInterval = startPing();
+            function startPing() {
+                return setInterval(() => {
+                    if (!document.hasFocus()) {
+                        sendPing();
+                    }
+                }, 120000); // Intervalo aumentado para 2 minutos
+            }
 
-        window.addEventListener('focus', () => {
-            clearInterval(pingInterval);
-            console.log("A aba está em foco. Pings pausados.");
-        });
+            let pingInterval = startPing();
 
-        window.addEventListener('blur', () => {
-            pingInterval = startPing();
-            console.log("A aba saiu de foco. Pings retomados.");
-        });
+            window.addEventListener('focus', () => {
+                clearInterval(pingInterval);
+                console.log("A aba está em foco. Pings pausados.");
+            });
 
-        // Função para manter o navegador "ativo" durante o compartilhamento de tela
-        setInterval(() => {
-            document.title = "Compartilhando tela... " + new Date().getTime();
-            setTimeout(() => {
-                document.title = "Compartilhar Tela";
-            }, 500);
-        }, 10000); // Executa a cada 10 segundos
+            window.addEventListener('blur', () => {
+                pingInterval = startPing();
+                console.log("A aba saiu de foco. Pings retomados.");
+            });
+        })();
     </script>
 </body>
 </html>
