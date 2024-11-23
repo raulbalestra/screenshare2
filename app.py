@@ -15,7 +15,7 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
-
+from threading import Thread
 # Carregar variáveis do arquivo .env
 load_dotenv()
 
@@ -145,6 +145,43 @@ def ensure_localidade_directory(localidade):
             with open(placeholder_path, "wb") as f:
                 pass  # Cria um arquivo vazio ou adicione uma imagem padrão
     return local_dir
+# Função para limpar frames antigos
+def remove_old_frames(directory, max_age_in_seconds):
+    """
+    Remove arquivos no diretório que são mais antigos do que max_age_in_seconds.
+    """
+    now = time.time()
+    try:
+        for localidade in os.listdir(directory):
+            localidade_dir = os.path.join(directory, localidade)
+
+            # Verifica se é um diretório
+            if os.path.isdir(localidade_dir):
+                for file_name in os.listdir(localidade_dir):
+                    file_path = os.path.join(localidade_dir, file_name)
+
+                    # Verifica a idade do arquivo
+                    if os.path.isfile(file_path):
+                        file_age = now - os.path.getmtime(file_path)
+                        if file_age > max_age_in_seconds:
+                            os.remove(file_path)
+                            print(f"[Limpeza] Arquivo removido: {file_path}")
+    except Exception as e:
+        print(f"[Erro na limpeza] {e}")
+
+# Função para executar a limpeza periodicamente
+def start_cleanup_task(interval=300, max_age_in_seconds=300):
+    """
+    Inicia uma thread para limpar frames antigos a cada 'interval' segundos.
+    """
+    def cleanup():
+        while True:
+            print("[Limpeza] Executando limpeza de frames antigos...")
+            remove_old_frames(IMAGE_DIR, max_age_in_seconds)
+            time.sleep(interval)
+    # Executa a limpeza em uma thread separada
+    thread = Thread(target=cleanup, daemon=True)
+    thread.start()
 
 # Rota para login
 @app.route("/login", methods=["POST"])
@@ -575,4 +612,8 @@ create_database()
 
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
+    # Inicia a tarefa de limpeza de frames antigos
+    start_cleanup_task(interval=300, max_age_in_seconds=300)
+    
+    # Inicia o servidor Flask
     app.run(host="0.0.0.0", port=5000, debug=True)
