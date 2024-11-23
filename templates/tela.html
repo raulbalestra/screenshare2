@@ -1,131 +1,157 @@
 <!DOCTYPE html>
 <html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Visualização da Tela</title>
     <!-- Importando uma fonte moderna do Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
     <!-- Importando Font Awesome para ícones (sem o atributo de integridade) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
     <style>
-        /* Variáveis de Cores */
-        :root {
-            --primary-color: #4a90e2;
-            --secondary-color: #f4f6f9;
-            --text-color: #333333;
-            --background-color: #ffffff;
-            --button-bg-color: #dc3545;
-            --button-hover-bg-color: #c82333;
-            --transition-speed: 0.3s;
-            --border-radius: 15px;
-            --font-family: 'Roboto', sans-serif;
-        }
+      /* Variáveis de Cores */
+      :root {
+        --primary-color: #4a90e2;
+        --secondary-color: #f4f6f9;
+        --text-color: #333333;
+        --background-color: #ffffff;
+        --button-bg-color: #dc3545;
+        --button-hover-bg-color: #c82333;
+        --transition-speed: 0.3s;
+        --border-radius: 15px;
+        --font-family: "Roboto", sans-serif;
+      }
 
-        /* Reset básico */
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+      /* Reset básico */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-        body {
-            font-family: var(--font-family);
-            background-color: var(--secondary-color);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            color: var(--text-color);
-            margin: 0;
-            overflow: hidden;
-        }
+      body {
+        font-family: var(--font-family);
+        background-color: var(--secondary-color);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        color: var(--text-color);
+        margin: 0;
+        overflow: hidden;
+      }
 
-        h2 {
-            color: var(--primary-color);
-            font-size: 1.5em;
-            text-align: center;
-            margin-bottom: 20px;
-        }
+      h2 {
+        color: var(--primary-color);
+        font-size: 1.5em;
+        text-align: center;
+        margin-bottom: 20px;
+      }
 
-        /* Estilos para a imagem da tela */
+      /* Estilos para a imagem da tela */
+      #screen {
+        width: 95vw;
+        height: 95vh;
+        object-fit: contain; /* Cobre toda a área da tela sem distorção */
+      }
+
+      /* Responsividade */
+      @media (max-width: 768px) {
         #screen {
-            width: 95vw;
-            height: 95vh;
-            object-fit: contain; /* Cobre toda a área da tela sem distorção */
+          height: 100vh;
+          object-fit: contain; /* Ajusta a imagem dentro da tela sem cortar */
         }
+      }
 
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            #screen {
-                height: 100vh;
-                object-fit: contain; /* Ajusta a imagem dentro da tela sem cortar */
-            }
-        }
-
-        /* Estilos para a mensagem de espera */
-        #message {
-            margin-top: 20px;
-            font-size: 1.5em;
-            color: #555;
-        }
-
+      /* Estilos para a mensagem de espera */
+      #message {
+        margin-top: 20px;
+        font-size: 1.5em;
+        color: #555;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h2>Painel de Filas - {{ localidade|capitalize }}</h2>
-    <img id="screen" src="" alt="Transmissão da Tela">
+    <img id="screen" src="" alt="Transmissão da Tela" />
     <div id="message">Aguardando o início da transmissão...</div>
 
     <script>
-        const baseImageUrl = "/serve_pil_image/";
+      const baseImageUrl = "/serve_pil_image/";
 
-        const localidade = "{{ localidade|default('') }}";  
-        const screenImage = document.getElementById('screen');
-        const messageDiv = document.getElementById('message');
+      const localidade = "{{ localidade|default('') }}";
+      const screenImage = document.getElementById("screen");
+      const messageDiv = document.getElementById("message");
 
-        function checkForTransmission() {
-            if (!localidade) {
-                messageDiv.textContent = "Localidade não especificada.";
-                return;
-            }
-
-            const imageUrl = baseImageUrl + localidade + "/screen.png?timestamp=" + new Date().getTime();
-
-            const img = new Image();
-            img.onload = function() {
-                screenImage.src = imageUrl;
-                screenImage.style.display = 'block';
-                messageDiv.style.display = 'none';
-                startUpdatingScreen();
-            }
-            img.onerror = function() {
-                screenImage.style.display = 'none';
-                messageDiv.style.display = 'block';
-                messageDiv.textContent = "A transmissão não começou ainda.";
-            }
-            img.src = imageUrl;
+      function checkForTransmission() {
+        if (!localidade) {
+          messageDiv.textContent = "Localidade não especificada.";
+          return;
         }
 
-        function updateScreen() {
-            if (!localidade) return;
+        // Gera a URL completa da imagem com um timestamp para evitar cache
+        const imageUrl =
+          baseImageUrl +
+          localidade +
+          "/screen.png?timestamp=" +
+          new Date().getTime();
 
-            const imageUrl = baseImageUrl + localidade + "/screen.png?random=" + new Date().getTime();
-            screenImage.src = imageUrl; 
-        }
+        // Cria um novo objeto Image para verificar se a imagem existe
+        const img = new Image();
+        img.onload = function () {
+          // Se a imagem carregar com sucesso, exibe a imagem e esconde a mensagem
+          screenImage.src = imageUrl;
+          screenImage.style.display = "block";
+          messageDiv.style.display = "none";
+          startUpdatingScreen();
+        };
+        img.onerror = function () {
+          // Se a imagem não existir, exibe a mensagem e esconde a imagem
+          screenImage.style.display = "none";
+          messageDiv.style.display = "block";
+          messageDiv.textContent = "A transmissão não começou ainda.";
+        };
+        img.src = imageUrl;
+      }
 
-        let updateInterval;
+      function updateScreen() {
+        if (!localidade) return;
 
-        function startUpdatingScreen() {
-            if (updateInterval) return;
-            updateInterval = setInterval(updateScreen, 1000);
-        }
+        // Gera a URL correta com a localidade e evita cache
+        const imageUrl =
+          baseImageUrl +
+          localidade +
+          "/screen.png?random=" +
+          new Date().getTime();
+        screenImage.src = imageUrl;
+      }
 
-        checkForTransmission();
+      let updateInterval;
 
-        setInterval(checkForTransmission, 5000);
+      function startUpdatingScreen() {
+        // Se o intervalo já estiver definido, não faz nada
+        if (updateInterval) return;
+
+        // Atualiza a tela a cada 1 segundo
+        updateInterval = setInterval(updateScreen, 1000);
+      }
+
+      // Verifica inicialmente se a transmissão já começou
+      checkForTransmission();
+
+      // Verifica a cada 5 segundos se a transmissão começou
+      setInterval(checkForTransmission, 5000);
     </script>
-</body>
+  </body>
 </html>
