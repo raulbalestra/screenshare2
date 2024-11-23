@@ -128,13 +128,26 @@
       function updateScreen() {
         if (!localidade) return;
 
-        // Gera a URL correta com a localidade e evita cache
         const imageUrl =
           baseImageUrl +
           localidade +
           "/screen.png?random=" +
           new Date().getTime();
-        screenImage.src = imageUrl;
+
+        fetch(imageUrl)
+          .then((response) => {
+            if (response.ok) {
+              screenImage.src = imageUrl;
+              messageDiv.style.display = "none";
+            } else {
+              console.error("Erro ao atualizar tela:", response.statusText);
+              stopUpdatingScreen();
+            }
+          })
+          .catch((error) => {
+            console.error("Erro ao buscar frame:", error);
+            stopUpdatingScreen();
+          });
       }
 
       let updateInterval;
