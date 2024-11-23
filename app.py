@@ -175,6 +175,7 @@ def start_cleanup_task(interval=300, max_age_in_seconds=300):
     Inicia uma thread para limpar frames antigos a cada 'interval' segundos.
     """
     def cleanup():
+        print("[Inicialização] Tarefa de limpeza iniciada.")
         while True:
             print("[Limpeza] Executando limpeza de frames antigos...")
             remove_old_frames(IMAGE_DIR, max_age_in_seconds)
