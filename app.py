@@ -22,7 +22,7 @@ import redis
 load_dotenv()
 
 # Configurar conexão com o Redis
-redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+redis_url = os.getenv("REDIS_URL", "redis://red-ct0tom3tq21c73ej1a9g:6379")
 redis_client = redis.Redis.from_url(redis_url)
 
 app = Flask(__name__)
