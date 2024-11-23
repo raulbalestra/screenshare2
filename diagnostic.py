@@ -4,7 +4,7 @@ import requests
 import os
 
 # Configurações
-BASE_URL = "https://www.paineldefilas-raizen.com.br/"  # Altere para a URL de produção, se necessário
+BASE_URL = "https://screenshare2-v2.onrender.com"  # Altere para a URL de produção, se necessário
 ENDPOINTS = [
     "/",
     "/Bria/tela",
