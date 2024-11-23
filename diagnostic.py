@@ -7,14 +7,16 @@ import os
 BASE_URL = "https://www.paineldefilas-raizen.com.br/"  # Altere para a URL de produção, se necessário
 ENDPOINTS = [
     "/",
-    "/Bria",
-    "/Bjeq",
-    "/Bbr",
-    "/Baur",
-    "/Bmad",
-    "/Bubp",
-    "/Bjeq",
-    "/Bron",
+    "/Bria/tela",
+    "/Bjeq/tela",
+    "/Bbr/tela",
+    "/Baur/tela",
+    "/Bmad/tela",
+    "/Bubp/tela",
+    "/Bjeq/tela",
+    "/Bron/tela",
+    "/curitiba/tela",
+     "/sp/tela",
     "/healthz",
 ]
 THRESHOLD_MEMORY_MB = 500  # Limite de memória em MB
