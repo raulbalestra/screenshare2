@@ -3,6 +3,7 @@ import time  # Importação necessária para controle de tempo entre uploads
 import psycopg2
 from flask import (
     Flask,
+    Response,
     flash,
     render_template,
     request,
@@ -15,9 +16,14 @@ from flask import (
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
+import redis
 
 # Carregar variáveis do arquivo .env
 load_dotenv()
+
+# Configurar conexão com o Redis
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+redis_client = redis.Redis.from_url(redis_url)
 
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta_aqui"
@@ -29,6 +35,7 @@ IMAGE_DIR = os.path.join(BASE_DIR, "static", "images")
 # Variável para controlar o tempo do último upload para cada localidade
 last_upload_time = {}
 
+
 def get_db_connection():
     conn = psycopg2.connect(
         host=os.getenv("DB_HOST", "localhost"),
@@ -39,6 +46,7 @@ def get_db_connection():
         sslmode="require",
     )
     return conn
+
 
 def create_database():
     conn = get_db_connection()
@@ -92,6 +100,7 @@ def create_database():
     cursor.close()
     conn.close()
 
+
 # Função para validar o login
 def check_login(username, password):
     conn = get_db_connection()
@@ -107,6 +116,7 @@ def check_login(username, password):
         else:
             return "blocked", None
     return None, None
+
 
 # Função para adicionar um usuário
 def add_user(username, password, localidade):
@@ -134,6 +144,7 @@ def add_user(username, password, localidade):
 
     return True
 
+
 # Função para garantir que a pasta da localidade exista
 def ensure_localidade_directory(localidade):
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
@@ -145,6 +156,7 @@ def ensure_localidade_directory(localidade):
             with open(placeholder_path, "wb") as f:
                 pass  # Cria um arquivo vazio ou adicione uma imagem padrão
     return local_dir
+
 
 # Rota para login
 @app.route("/login", methods=["POST"])
@@ -168,83 +180,64 @@ def login():
         flash("Nome de usuário ou senha inválidos.", "error")
         return redirect(url_for("index"))
 
+
 # Rota para logout
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("index"))
 
+
 # Rota para upload do frame com controle de frequência
 @app.route("/<localidade>/upload_frame", methods=["POST"])
 def upload_frame(localidade):
-    global last_upload_time
-    current_time = time.time()
-    
-    # Define intervalo mínimo de tempo em segundos entre uploads
-    upload_interval = 2  # Ajuste o intervalo conforme necessário (ex.: 2 segundos)
-
     if "logged_in" in session and session.get("localidade") == localidade:
-        # Verifica se o último upload ocorreu há pelo menos 'upload_interval' segundos
-        if localidade in last_upload_time:
-            elapsed_time = current_time - last_upload_time[localidade]
-            if elapsed_time < upload_interval:
-                print(f"Upload ignorado para {localidade}, intervalo de {upload_interval} segundos ainda não passou.")
-                return "", 204  # Retorna vazio sem atualizar
-
-        # Define o diretório de salvamento da imagem
-        local_dir = ensure_localidade_directory(localidade)
-        frame_path_local = os.path.join(local_dir, "screen.png")
-        
         if "frame" in request.files:
             frame = request.files["frame"]
             try:
-                frame.save(frame_path_local)
-                last_upload_time[localidade] = current_time  # Atualiza o tempo do último upload
-                print(f"Frame salvo com sucesso em {frame_path_local}.")
+                # Salva o frame no Redis com uma chave única por localidade e TTL de 60 segundos
+                redis_client.set(f"frame:{localidade}", frame.read(), ex=60)
+                print(f"Frame armazenado no Redis para a localidade: {localidade}")
+                return "", 204
             except Exception as e:
-                print(f"Erro ao salvar o frame: {e}")
+                print(f"Erro ao salvar o frame no Redis: {e}")
                 return "", 500
         else:
             print("Nenhum frame recebido.")
-        return "", 204
+            return "Nenhum frame enviado.", 400
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
+
 # Rota para servir a imagem do frame
 @app.route("/serve_pil_image/<localidade>/screen.png")
 def serve_pil_image(localidade):
-    local_dir = os.path.join(IMAGE_DIR, localidade.lower())
-    if not os.path.isdir(local_dir):
-        print(f"Pasta da localidade não encontrada: {local_dir}")
-        abort(404, description="Localidade não encontrada.")
-
-    image_path = os.path.join(local_dir, "screen.png")
-    if not os.path.isfile(image_path):
-        print(f"Arquivo de imagem não encontrado no caminho: {image_path}")
-        abort(404, description="Imagem não encontrada.")
-
     try:
-        response = send_from_directory(local_dir, "screen.png", mimetype="image/png")
-        response.headers["Cache-Control"] = (
-            "no-cache, no-store, must-revalidate, max-age=0"
-        )
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-        return response
+        # Recupera o frame do Redis
+        frame_data = redis_client.get(f"frame:{localidade}")
+        if frame_data is None:
+            print(f"Frame não encontrado para a localidade: {localidade}")
+            abort(404, description="Frame não encontrado.")
+
+        # Retorna o frame como uma resposta HTTP
+        return Response(frame_data, mimetype="image/png")
     except Exception as e:
-        print(f"Erro ao servir a imagem: {e}")
-        abort(500, description="Erro ao servir a imagem.")
+        print(f"Erro ao servir o frame: {e}")
+        abort(500, description="Erro ao servir o frame.")
+
 
 # Rota pública para visualizar a tela (acessível externamente)
 @app.route("/tela")
 def tela():
     return render_template("tela.html")
 
+
 # Rota para renderizar a página de visualização de tela por localidade
 @app.route("/<localidade>/tela")
 def view_screen_by_region(localidade):
     return render_template("tela.html", localidade=localidade)
+
 
 # Rota para compartilhar a tela
 @app.route("/<localidade>/tela-compartilhada")
@@ -264,6 +257,7 @@ def share_screen(localidade):
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
+
 # Página de login
 @app.route("/")
 def index():
@@ -273,12 +267,14 @@ def index():
         return redirect(url_for("share_screen", localidade=session["localidade"]))
     return render_template("login.html")
 
+
 # Rota para o painel do administrador
 @app.route("/admin_dashboard")
 def admin_dashboard():
     if "logged_in" in session and session["is_admin"]:
         return render_template("admin.html")
     return redirect(url_for("index"))
+
 
 # Rota para gerenciar usuários
 @app.route("/admin/manage_users")
@@ -297,6 +293,7 @@ def manage_users():
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
+
 # Rota para deletar usuário
 @app.route("/admin/delete_user/<int:user_id>", methods=["POST"])
 def delete_user(user_id):
@@ -312,6 +309,7 @@ def delete_user(user_id):
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
+
 
 # Rota para bloquear usuário
 @app.route("/admin/block_user/<int:user_id>", methods=["POST"])
@@ -335,6 +333,7 @@ def block_user(user_id):
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
+
 # Rota para desbloquear usuário
 @app.route("/admin/unblock_user/<int:user_id>", methods=["POST"])
 def unblock_user(user_id):
@@ -357,6 +356,7 @@ def unblock_user(user_id):
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
+
 @app.route("/admin/add_user", methods=["GET", "POST"])
 def add_new_user():
     if request.method == "POST":
@@ -378,7 +378,7 @@ def add_new_user():
                 INSERT INTO users (username, password, localidade, is_admin, is_active)
                 VALUES (%s, %s, %s, %s, %s)
                 """,
-                (username, hashed_password, localidade, False, True)
+                (username, hashed_password, localidade, False, True),
             )
             conn.commit()
             flash("Usuário adicionado com sucesso!", "success")
@@ -394,6 +394,7 @@ def add_new_user():
         return redirect(url_for("manage_users"))
 
     return render_template("add_user.html")
+
 
 # Rota para o administrador alterar a senha de um usuário
 @app.route("/admin/change_password/<int:user_id>", methods=["GET", "POST"])
@@ -445,6 +446,7 @@ def admin_change_password(user_id):
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
+
 # Rota para o administrador alterar sua própria senha
 @app.route("/admin/change_own_password", methods=["GET", "POST"])
 def admin_change_own_password():
@@ -492,6 +494,7 @@ def admin_change_own_password():
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
+
 
 # Rota para o usuário alterar sua própria senha
 @app.route("/change_password", methods=["GET", "POST"])
@@ -541,12 +544,20 @@ def change_password():
 
     return render_template("change_password.html")
 
+
+@app.route("/healthz")
+def health_check():
+    return {"status": "ok"}, 200
+
+
 # Rota para limpar o cache de uma localidade específica
 @app.route("/<localidade>/clear_cache", methods=["POST"])
 def clear_cache(localidade):
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
     frame_path_local = os.path.join(local_dir, "screen.png")
-    print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
+    print(
+        f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}"
+    )
     print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
     try:
         if os.path.exists(frame_path_local):
@@ -555,24 +566,39 @@ def clear_cache(localidade):
             return jsonify({"message": "Cache limpo com sucesso."}), 200
         else:
             print("[clear_cache] Arquivo não encontrado.")
-            return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
+            return (
+                jsonify(
+                    {
+                        "message": "Nenhum cache encontrado para a localidade especificada."
+                    }
+                ),
+                404,
+            )
     except Exception as e:
         print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
         return jsonify({"message": f"Erro ao limpar cache: {str(e)}"}), 500
+
 
 # Página de erro 404 - Página não encontrada
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template("404.html"), 404
 
+
 # Página de erro 500 - Erro interno do servidor
 @app.errorhandler(500)
 def internal_server_error(e):
     return render_template("500.html"), 500
+
 
 # Inicializar o banco de dados antes de servir qualquer rota
 create_database()
 
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
+    try:
+        redis_client.ping()
+        print("Conectado ao Redis com sucesso!")
+    except redis.ConnectionError as e:
+        print(f"Erro ao conectar ao Redis: {e}")
     app.run(host="0.0.0.0", port=5000, debug=True)
