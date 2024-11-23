@@ -283,11 +283,17 @@
               })
                 .then((response) => {
                   if (!response.ok) {
-                    console.error("Erro ao enviar frame");
+                    console.error("Erro ao enviar frame", response.statusText);
+                    alert(
+                      "Erro ao conectar ao servidor. Verifique sua conexão."
+                    );
                   }
                 })
                 .catch((error) => {
                   console.error("Erro de conexão ao enviar frame:", error);
+                  alert(
+                    "Erro de conexão com o servidor. Tentando novamente..."
+                  );
                 });
             }
           }, "image/png");
