@@ -39,3 +39,4 @@ tqdm==4.66.5
 typing_extensions==4.12.2
 Werkzeug==3.0.4
 wsproto==1.2.0
+psutil
