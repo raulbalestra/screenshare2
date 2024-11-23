@@ -22,7 +22,7 @@ import redis
 load_dotenv()
 
 # Configurar conexão com o Redis
-redis_url = os.getenv("REDIS_URL", "redis://red-ct0tom3tq21c73ej1a9g:6379")
+redis_url = os.getenv("REDIS_URL", "redis://red-ct0trge8ii6s73fa6bug:6379")
 redis_client = redis.Redis.from_url(redis_url)
 
 app = Flask(__name__)
@@ -547,7 +547,12 @@ def change_password():
 
 @app.route("/healthz")
 def health_check():
-    return {"status": "ok"}, 200
+    try:
+        redis_client.ping()
+        return jsonify({"status": "Redis funcionando!"}), 200
+    except redis.ConnectionError:
+        return jsonify({"status": "Erro ao conectar ao Redis"}), 500
+
 
 
 # Rota para limpar o cache de uma localidade específica
