@@ -147,27 +147,22 @@ def ensure_localidade_directory(localidade):
     return local_dir
 # Função para limpar frames antigos
 def remove_old_frames(directory, max_age_in_seconds):
-    """
-    Remove arquivos no diretório que são mais antigos do que max_age_in_seconds.
-    """
     now = time.time()
+    print(f"[Backend] Iniciando limpeza no diretório: {directory}...")
     try:
         for localidade in os.listdir(directory):
             localidade_dir = os.path.join(directory, localidade)
-
-            # Verifica se é um diretório
             if os.path.isdir(localidade_dir):
                 for file_name in os.listdir(localidade_dir):
                     file_path = os.path.join(localidade_dir, file_name)
-
-                    # Verifica a idade do arquivo
                     if os.path.isfile(file_path):
                         file_age = now - os.path.getmtime(file_path)
                         if file_age > max_age_in_seconds:
                             os.remove(file_path)
-                            print(f"[Limpeza] Arquivo removido: {file_path}")
+                            print(f"[Backend] Arquivo removido: {file_path} (idade: {file_age:.2f}s)")
     except Exception as e:
-        print(f"[Erro na limpeza] {e}")
+        print(f"[Backend] Erro durante a limpeza: {e}")
+    print("[Backend] Limpeza concluída.")
 
 # Função para executar a limpeza periodicamente
 def start_cleanup_task(interval=300, max_age_in_seconds=300):
@@ -613,6 +608,7 @@ create_database()
 
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
+     os.makedirs(IMAGE_DIR, exist_ok=True)
     # Inicia a tarefa de limpeza de frames antigos
     start_cleanup_task(interval=300, max_age_in_seconds=300)
     
