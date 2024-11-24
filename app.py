@@ -608,9 +608,6 @@ create_database()
 
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
-     os.makedirs(IMAGE_DIR, exist_ok=True)
-    # Inicia a tarefa de limpeza de frames antigos
-    start_cleanup_task(interval=300, max_age_in_seconds=300)
-    
-    # Inicia o servidor Flask
+    start_cleanup_task(interval=300, max_age_in_seconds=300)  # Limpeza a cada 5 minutos
     app.run(host="0.0.0.0", port=5000, debug=True)
+
