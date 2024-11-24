@@ -75,18 +75,18 @@
     </style>
 </head>
 <body>
-    <h2>Painel de Filas- {{ localidade|capitalize }}</h2>
+    <h2>Painel de Filas - {{ localidade|capitalize }}</h2>
     <img id="screen" src="" alt="Transmissão da Tela">
     <div id="message">Aguardando o início da transmissão...</div>
 
     <script>
-        // Define a rota base para servir as imagens manualmente
-        const baseImageUrl = "/serve_pil_image/"; // Define manualmente a base URL
-
-        // Obtém a localidade passada pelo servidor
+        const baseImageUrl = "/serve_pil_image/";
         const localidade = "{{ localidade|default('') }}";  
         const screenImage = document.getElementById('screen');
         const messageDiv = document.getElementById('message');
+
+        let updateInterval;
+        let cleanupInterval;
 
         function checkForTransmission() {
             if (!localidade) {
@@ -94,51 +94,80 @@
                 return;
             }
 
-            // Gera a URL completa da imagem
             const imageUrl = baseImageUrl + localidade + "/screen.png?random=" + new Date().getTime();
-
-
-            // Cria um novo objeto Image para verificar se a imagem existe
             const img = new Image();
             img.onload = function() {
-                // Se a imagem carregar com sucesso, exibe a imagem e esconde a mensagem
                 screenImage.src = imageUrl;
                 screenImage.style.display = 'block';
                 messageDiv.style.display = 'none';
-                // Inicia a atualização periódica da tela
                 startUpdatingScreen();
-            }
+                startCleanupTask();
+            };
             img.onerror = function() {
-                // Se a imagem não existir, exibe a mensagem e esconde a imagem
                 screenImage.style.display = 'none';
                 messageDiv.style.display = 'block';
                 messageDiv.textContent = "A transmissão não começou ainda.";
-            }
+            };
             img.src = imageUrl;
         }
 
         function updateScreen() {
             if (!localidade) return;
 
-            // Gera a URL correta com a localidade e evita cache
             const imageUrl = baseImageUrl + localidade + "/screen.png?random=" + new Date().getTime();
             screenImage.src = imageUrl; 
         }
 
-        let updateInterval;
-
         function startUpdatingScreen() {
-            // Se o intervalo já estiver definido, não faz nada
-            if (updateInterval) return;
-            // Atualiza a tela a cada 1 segundo
-            updateInterval = setInterval(updateScreen, 1000);
+            if (!updateInterval) {
+                updateInterval = setInterval(updateScreen, 1000);
+            }
         }
 
-        // Verifica inicialmente se a transmissão já começou
-        checkForTransmission();
+        function startCleanupTask() {
+            if (!cleanupInterval) {
+                cleanupInterval = setInterval(() => {
+                    triggerCacheCleanup();
+                }, 300000); // 5 minutos
+            }
+        }
 
-        // Verifica a cada 5 segundos se a transmissão começou
-        setInterval(checkForTransmission, 5000);
+        function stopCleanupTask() {
+            if (cleanupInterval) {
+                clearInterval(cleanupInterval);
+                cleanupInterval = null;
+            }
+        }
+
+        function triggerCacheCleanup() {
+            fetch("/trigger_cache_cleanup", {
+                method: "POST",
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log("[Frontend] Limpeza de cache acionada com sucesso.");
+                } else {
+                    console.error("[Frontend] Falha ao acionar a limpeza de cache.");
+                }
+            })
+            .catch(error => {
+                console.error("[Frontend] Erro ao acionar a limpeza de cache:", error);
+            });
+        }
+
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                startCleanupTask();
+            } else {
+                stopCleanupTask();
+            }
+        });
+
+        document.addEventListener("DOMContentLoaded", checkForTransmission);
+
+        window.addEventListener("beforeunload", () => {
+            stopCleanupTask();
+        });
     </script>
 </body>
 </html>

@@ -147,8 +147,10 @@ def ensure_localidade_directory(localidade):
     return local_dir
 # Função para limpar frames antigos
 def remove_old_frames(directory, max_age_in_seconds):
+    """
+    Remove arquivos no diretório que são mais antigos do que max_age_in_seconds.
+    """
     now = time.time()
-    print(f"[Backend] Iniciando limpeza no diretório: {directory}...")
     try:
         for localidade in os.listdir(directory):
             localidade_dir = os.path.join(directory, localidade)
@@ -159,10 +161,9 @@ def remove_old_frames(directory, max_age_in_seconds):
                         file_age = now - os.path.getmtime(file_path)
                         if file_age > max_age_in_seconds:
                             os.remove(file_path)
-                            print(f"[Backend] Arquivo removido: {file_path} (idade: {file_age:.2f}s)")
+                            print(f"[Backend] Arquivo removido: {file_path}")
     except Exception as e:
-        print(f"[Backend] Erro durante a limpeza: {e}")
-    print("[Backend] Limpeza concluída.")
+        print(f"[Backend] Erro ao limpar arquivos: {e}")
 
 # Função para executar a limpeza periodicamente
 def start_cleanup_task(interval=300, max_age_in_seconds=300):
@@ -477,7 +478,20 @@ def admin_change_password(user_id):
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
-
+    
+@app.route("/trigger_cache_cleanup", methods=["POST"])
+def trigger_cache_cleanup():
+    """
+    Aciona a limpeza de cache para todas as localidades.
+    """
+    try:
+        remove_old_frames(IMAGE_DIR, max_age_in_seconds=300)
+        print("[Backend] Limpeza de cache acionada pelo frontend.")
+        return jsonify({"message": "Limpeza de cache executada com sucesso."}), 200
+    except Exception as e:
+        print(f"[Backend] Erro ao executar limpeza de cache: {e}")
+        return jsonify({"error": "Erro ao executar limpeza de cache."}), 500
+    
 # Rota para o administrador alterar sua própria senha
 @app.route("/admin/change_own_password", methods=["GET", "POST"])
 def admin_change_own_password():
@@ -608,6 +622,8 @@ create_database()
 
 # Iniciar o aplicativo com acesso externo
 if __name__ == "__main__":
-    start_cleanup_task(interval=300, max_age_in_seconds=300)  # Limpeza a cada 5 minutos
+    # Inicia a tarefa de limpeza de frames antigos
+    start_cleanup_task(interval=300, max_age_in_seconds=300)
+    
+    # Inicia o servidor Flask
     app.run(host="0.0.0.0", port=5000, debug=True)
-
