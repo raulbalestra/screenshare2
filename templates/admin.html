@@ -1,171 +1,482 @@
-<!-- templates/admin.html -->
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Administração</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Importando Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-t5R+Kvzml0eFq9X7+VGFhrJ1j9J0d4n+nQpXh1LLnB5/ZTvjqIhaLxV9F0R2Iqz63mDq6k59KX4R2p10iqA2Gw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        /* Variáveis de Cores */
-        :root {
-            --primary-color: #4a90e2;
-            --secondary-color: #f0f4f8;
-            --accent-color: #28a745;
-            --text-color: #333;
-            --background-color: #ffffff;
-            --button-color: #007bff;
-            --button-hover-color: #0056b3;
-            --add-button-color: #28a745;
-            --add-button-hover-color: #218838;
-            --logout-button-color: #dc3545;
-            --logout-button-hover-color: #c82333;
-            --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            --border-radius: 12px;
-            --font-size: 16px;
-            --transition-speed: 0.3s;
-        }
+{% extends "base.html" %}
 
-        /* Reset Básico */
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+{% block title %}Painel de Administração - Rayzen ScreenShare{% endblock %}
 
-        body {
-            font-family: 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #74ebd5 0%, #acb6e5 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            color: var(--text-color);
-            padding: 20px;
-        }
-
-        /* Container Principal */
-        .container {
-            background-color: var(--background-color);
-            padding: 40px;
-            border-radius: var(--border-radius);
-            max-width: 600px;
-            width: 100%;
-            box-shadow: var(--box-shadow);
+{% block extra_css %}
+<style>
+        /* Admin Panel Specific Styles */
+        .admin-hero {
             text-align: center;
-            transition: transform var(--transition-speed), box-shadow var(--transition-speed);
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius-xl);
+            box-shadow: var(--shadow-lg);
         }
-
-        .container:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Título */
-        h2 {
-            font-size: 2.5em;
-            color: var(--primary-color);
+        
+        .admin-title {
+            font-family: var(--font-secondary);
+            font-size: 2.8rem;
             font-weight: 700;
-            margin-bottom: 30px;
-            position: relative;
-        }
-
-        h2::after {
-            content: '';
-            width: 80px;
-            height: 4px;
-            background-color: var(--primary-color);
-            display: block;
-            margin: 10px auto 0;
-            border-radius: 2px;
-        }
-
-        /* Ações */
-        .actions {
+            color: var(--rayzen-dark);
+            margin-bottom: 1rem;
             display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 20px;
-        }
-
-        .button {
-            padding: 15px 20px;
-            background-color: var(--button-color);
-            color: white;
-            border: none;
-            border-radius: var(--border-radius);
-            font-size: 1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color var(--transition-speed), transform var(--transition-speed), box-shadow var(--transition-speed);
-            display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 100%;
-            max-width: 250px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            gap: 1rem;
         }
-
-        .button i {
-            margin-right: 10px;
+        
+        .admin-subtitle {
+            color: #6c757d;
+            font-size: 1.2rem;
+            margin-bottom: 0;
         }
-
-        .button:hover {
-            background-color: var(--button-hover-color);
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+        
+        .admin-badge {
+            background: var(--gradient-primary);
+            color: white;
+            padding: 0.5rem 1.5rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-top: 1rem;
         }
-
-        .add-user-btn {
-            background-color: var(--add-button-color);
+        
+        .admin-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
         }
-
-        .add-user-btn:hover {
-            background-color: var(--add-button-hover-color);
+        
+        .action-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius-lg);
+            padding: 2.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
         }
-
-        .logout-btn {
-            background-color: var(--logout-button-color);
+        
+        .action-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-primary);
         }
-
-        .logout-btn:hover {
-            background-color: var(--logout-button-hover-color);
+        
+        .action-card:hover {
+            transform: translateY(-8px);
+            box-shadow: var(--shadow-xl);
+            border-color: var(--rayzen-primary);
         }
-
-        /* Responsividade */
+        
+        .action-icon {
+            font-size: 3.5rem;
+            color: var(--rayzen-primary);
+            margin-bottom: 1.5rem;
+        }
+        
+        .action-title {
+            font-family: var(--font-secondary);
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--rayzen-dark);
+            margin-bottom: 1rem;
+        }
+        
+        .action-description {
+            color: #6c757d;
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            line-height: 1.5;
+        }
+        
+        .admin-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .stat-card-admin {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card-admin:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .stat-icon-admin {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .stat-number-admin {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--rayzen-dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label-admin {
+            color: #6c757d;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .users-stat .stat-icon-admin {
+            color: var(--rayzen-primary);
+        }
+        
+        .rooms-stat .stat-icon-admin {
+            color: var(--rayzen-secondary);
+        }
+        
+        .sessions-stat .stat-icon-admin {
+            color: var(--rayzen-success);
+        }
+        
+        .system-stat .stat-icon-admin {
+            color: var(--rayzen-warning);
+        }
+        
+        .quick-actions {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius-lg);
+            padding: 2.5rem;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .quick-actions-title {
+            font-family: var(--font-secondary);
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--rayzen-dark);
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+        
+        /* Responsive Design */
         @media (max-width: 768px) {
-            .button {
-                max-width: 100%;
-                font-size: 0.9em;
+            .admin-title {
+                font-size: 2.2rem;
+                flex-direction: column;
+                gap: 0.5rem;
             }
-
-            h2 {
-                font-size: 2em;
+            
+            .admin-actions {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+            
+            .action-card {
+                padding: 2rem;
+            }
+            
+            .action-icon {
+                font-size: 2.5rem;
+            }
+            
+            .admin-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .quick-actions-grid {
+                grid-template-columns: 1fr;
             }
         }
-
+        
         @media (max-width: 480px) {
-            .button {
-                padding: 12px 15px;
-                font-size: 0.85em;
+            .admin-title {
+                font-size: 1.8rem;
             }
-
-            h2 {
-                font-size: 1.8em;
+            
+            .admin-stats {
+                grid-template-columns: 1fr;
+            }
+            
+            .stat-number-admin {
+                font-size: 1.5rem;
             }
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <h2><i class="fas fa-user-shield"></i> Painel de Administração</h2>
-        <div class="actions">
-            <a href="{{ url_for('manage_users') }}" class="button"><i class="fas fa-users-cog"></i> Gerenciar Usuários</a>
-            <a href="{{ url_for('add_new_user') }}" class="button add-user-btn"><i class="fas fa-user-plus"></i> Adicionar Novo Usuário</a>
-            <a href="{{ url_for('logout') }}" class="button logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</a>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Admin Hero Section -->
+    <div class="admin-hero">
+        <h1 class="admin-title">
+            <i class="fas fa-gas-pump fuel-icon"></i>
+            <span>Painel Administrativo <span class="brand-element">Rayzen</span></span>
+        </h1>
+        <p class="admin-subtitle">
+            Sistema de gerenciamento completo para ScreenShare corporativo
+        </p>
+        <div class="admin-badge">
+            <i class="fas fa-shield-alt me-2"></i>
+            Acesso Administrativo
         </div>
     </div>
-</body>
-</html>
+
+    <!-- Statistics Dashboard -->
+    <div class="admin-stats slide-up">
+        <div class="stat-card-admin users-stat">
+            <div class="stat-icon-admin">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-number-admin">{{ user_count if user_count is defined else '0' }}</div>
+            <div class="stat-label-admin">Usuários Registrados</div>
+        </div>
+        
+        <div class="stat-card-admin rooms-stat">
+            <div class="stat-icon-admin">
+                <i class="fas fa-door-open"></i>
+            </div>
+            <div class="stat-number-admin">{{ room_count if room_count is defined else '0' }}</div>
+            <div class="stat-label-admin">Salas Criadas</div>
+        </div>
+        
+        <div class="stat-card-admin sessions-stat">
+            <div class="stat-icon-admin">
+                <i class="fas fa-desktop"></i>
+            </div>
+            <div class="stat-number-admin">{{ active_sessions if active_sessions is defined else '0' }}</div>
+            <div class="stat-label-admin">Sessões Ativas</div>
+        </div>
+        
+        <div class="stat-card-admin system-stat">
+            <div class="stat-icon-admin">
+                <i class="fas fa-server"></i>
+            </div>
+            <div class="stat-number-admin">100%</div>
+            <div class="stat-label-admin">Sistema Online</div>
+        </div>
+    </div>
+
+    <!-- Main Admin Actions -->
+    <div class="admin-actions slide-up">
+        <div class="action-card">
+            <div class="action-icon">
+                <i class="fas fa-users-cog"></i>
+            </div>
+            <h3 class="action-title">Gerenciar Usuários</h3>
+            <p class="action-description">
+                Visualize, edite, adicione ou remova usuários do sistema. 
+                Controle permissões e acesso às funcionalidades.
+            </p>
+            <a href="{{ url_for('admin.manage_users') }}" class="btn btn-rayzen-primary">
+                <i class="fas fa-cog me-2"></i>
+                Gerenciar Usuários
+            </a>
+        </div>
+
+        <div class="action-card">
+            <div class="action-icon">
+                <i class="fas fa-user-plus"></i>
+            </div>
+            <h3 class="action-title">Adicionar Usuário</h3>
+            <p class="action-description">
+                Cadastre novos usuários no sistema com diferentes níveis 
+                de acesso e permissões personalizadas.
+            </p>
+            <a href="{{ url_for('admin.add_new_user') }}" class="btn btn-rayzen-secondary">
+                <i class="fas fa-plus me-2"></i>
+                Novo Usuário
+            </a>
+        </div>
+
+        <div class="action-card">
+            <div class="action-icon">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <h3 class="action-title">Relatórios</h3>
+            <p class="action-description">
+                Visualize estatísticas de uso, relatórios de sessões 
+                e análises detalhadas do sistema.
+            </p>
+            <a href="#" class="btn btn-rayzen-accent" onclick="showComingSoon()">
+                <i class="fas fa-chart-bar me-2"></i>
+                Ver Relatórios
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions slide-up">
+        <h2 class="quick-actions-title">
+            <i class="fas fa-bolt"></i>
+            Ações Rápidas
+        </h2>
+        <div class="quick-actions-grid">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-rayzen-primary">
+                <i class="fas fa-home me-2"></i>
+                Voltar ao Dashboard
+            </a>
+            <a href="{{ url_for('admin.change_own_password') if url_for('admin.change_own_password') else '#' }}" class="btn btn-rayzen-secondary">
+                <i class="fas fa-key me-2"></i>
+                Alterar Minha Senha
+            </a>
+            <button class="btn btn-rayzen-accent" onclick="exportData()">
+                <i class="fas fa-download me-2"></i>
+                Exportar Dados
+            </button>
+            <button class="btn btn-outline-danger" onclick="confirmLogout()">
+                <i class="fas fa-sign-out-alt me-2"></i>
+                Sair do Sistema
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Animação dos números das estatísticas
+    document.addEventListener('DOMContentLoaded', function() {
+        const statNumbers = document.querySelectorAll('.stat-number-admin');
+        
+        statNumbers.forEach((stat, index) => {
+            const text = stat.textContent;
+            if (!isNaN(text) && text !== '100%') {
+                const finalNumber = parseInt(text);
+                stat.textContent = '0';
+                
+                setTimeout(() => {
+                    animateNumber(stat, 0, finalNumber, 1500);
+                }, index * 200);
+            }
+        });
+    });
+
+    function animateNumber(element, start, end, duration) {
+        const startTime = performance.now();
+        
+        function updateNumber(currentTime) {
+            const elapsedTime = currentTime - startTime;
+            const progress = Math.min(elapsedTime / duration, 1);
+            const currentNumber = Math.floor(start + (end - start) * progress);
+            
+            element.textContent = currentNumber;
+            
+            if (progress < 1) {
+                requestAnimationFrame(updateNumber);
+            }
+        }
+        
+        requestAnimationFrame(updateNumber);
+    }
+
+    function showComingSoon() {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-rayzen-info alert-dismissible fade show';
+        alert.innerHTML = `
+            <i class="fas fa-info-circle me-2"></i>
+            Esta funcionalidade estará disponível em breve!
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        const container = document.querySelector('.container-rayzen');
+        container.insertBefore(alert, container.firstChild);
+        
+        setTimeout(() => {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+        }, 3000);
+    }
+
+    function exportData() {
+        const button = event.target;
+        const originalText = button.innerHTML;
+        
+        button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Exportando...';
+        button.disabled = true;
+        
+        // Simular exportação
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.disabled = false;
+            
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-rayzen-success alert-dismissible fade show';
+            alert.innerHTML = `
+                <i class="fas fa-check-circle me-2"></i>
+                Dados exportados com sucesso! Download iniciado.
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            const container = document.querySelector('.container-rayzen');
+            container.insertBefore(alert, container.firstChild);
+            
+            setTimeout(() => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }, 4000);
+        }, 2000);
+    }
+
+    function confirmLogout() {
+        if (confirm('Tem certeza que deseja sair do sistema administrativo?')) {
+            window.location.href = '{{ url_for("auth.logout") }}';
+        }
+    }
+
+    // Adicionar efeitos hover nas action cards
+    document.querySelectorAll('.action-card').forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-12px)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(-8px)';
+        });
+    });
+
+    // Atalhos de teclado
+    document.addEventListener('keydown', function(e) {
+        // Alt + U para gerenciar usuários
+        if (e.altKey && e.key === 'u') {
+            e.preventDefault();
+            window.location.href = '{{ url_for("admin.manage_users") }}';
+        }
+        
+        // Alt + N para novo usuário
+        if (e.altKey && e.key === 'n') {
+            e.preventDefault();
+            window.location.href = '{{ url_for("admin.add_new_user") }}';
+        }
+        
+        // Alt + D para dashboard
+        if (e.altKey && e.key === 'd') {
+            e.preventDefault();
+            window.location.href = '{{ url_for("dashboard") }}';
+        }
+    });
+</script>
+{% endblock %}

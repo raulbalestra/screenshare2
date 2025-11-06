@@ -1,305 +1,267 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <!-- Importando uma fonte moderna do Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Importando Font Awesome para ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        /* Variáveis de Cores */
-        :root {
-            --primary-color: #4a90e2;
-            --accent-color: #28a745;
-            --error-color: #dc3545;
-            --text-color: #333333;
-            --background-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --container-bg: rgba(255, 255, 255, 0.9);
-            --input-bg-color: #f9f9f9;
-            --input-border-color: #cccccc;
-            --input-focus-border-color: #4a90e2;
-            --button-bg-color: #4a90e2;
-            --button-hover-bg-color: #357ABD;
-            --button-active-bg-color: #2a65a0;
-            --font-family: 'Roboto', sans-serif;
-            --transition-speed: 0.3s;
-            --border-radius: 15px;
-            --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
+{% extends "base.html" %}
 
-        /* Reset Básico */
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+{% block title %}Login - Rayzen ScreenShare{% endblock %}
 
-        body {
-            font-family: var(--font-family);
-            background: var(--background-gradient);
+{% block navbar %}{% endblock %}
+
+{% block extra_css %}
+<style>
+        /* Login Page Specific Styles */
+        main {
+            margin-top: 0 !important;
+            min-height: 100vh;
             display: flex;
-            justify-content: center;
             align-items: center;
-            height: 100vh;
-            color: var(--text-color);
-            overflow: hidden;
+            justify-content: center;
+            background: var(--gradient-primary);
+            background-attachment: fixed;
         }
-
-        /* Container Principal */
-        .container {
-            background-color: var(--container-bg);
-            border-radius: var(--border-radius);
-            padding: 50px 40px;
-            box-shadow: var(--box-shadow);
+        
+        .login-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: var(--border-radius-xl);
+            padding: 3rem 2.5rem;
+            box-shadow: var(--shadow-xl);
             width: 100%;
-            max-width: 380px;
+            max-width: 450px;
             text-align: center;
-            animation: fadeIn 0.6s ease-in-out;
             position: relative;
+            animation: fadeIn 0.8s ease-out;
         }
-
-        /* Elemento Decorativo */
-        .container::before {
+        
+        .login-container::before {
             content: '';
             position: absolute;
-            top: -30px;
+            top: -40px;
             left: 50%;
             transform: translateX(-50%);
-            width: 80px;
-            height: 80px;
-            background-color: var(--primary-color);
+            width: 90px;
+            height: 90px;
+            background: var(--gradient-primary);
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .login-header {
+            margin-bottom: 2.5rem;
+        }
+        
+        .login-title {
+            font-family: var(--font-secondary);
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--rayzen-dark);
+            margin-bottom: 0.5rem;
+        }
+        
+        .login-subtitle {
+            color: #6c757d;
+            font-size: 1rem;
+            margin-bottom: 0;
+        }
+        
+        .brand-logo {
             color: white;
-            font-size: 36px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Título */
-        h2 {
-            margin-bottom: 30px;
-            color: var(--primary-color);
-            font-size: 1.8em;
-            font-weight: 500;
-            position: relative;
-        }
-
-        h2::after {
-            content: '';
-            display: block;
-            width: 80px;
-            height: 4px;
-            background-color: var(--primary-color);
-            margin: 10px auto 0;
-            border-radius: 2px;
-        }
-
-        /* Estilos para mensagens flash */
-        .flash-messages {
-            margin-bottom: 20px;
-            list-style: none;
-            padding: 0;
-        }
-
-        .flash-messages li {
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 10px;
-            color: #fff;
-            animation: slideDown 0.5s ease-in-out;
-        }
-
-        .flash-messages li.success {
-            background-color: var(--accent-color);
-        }
-
-        .flash-messages li.error {
-            background-color: var(--error-color);
-        }
-
-        /* Estilos para o formulário */
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-
-        .input-group {
-            position: relative;
-        }
-
-        label {
-            text-align: left;
-            font-weight: 500;
-            margin-bottom: 8px;
-            font-size: 0.95em;
-            color: #555;
-        }
-
-        input[type="text"],
-        input[type="password"] {
-            width: 100%;
-            padding: 12px 40px 12px 15px;
-            border: 1px solid var(--input-border-color);
-            border-radius: 8px;
-            background-color: var(--input-bg-color);
-            font-size: 1em;
-            transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
-        }
-
-        input[type="text"]:focus,
-        input[type="password"]:focus {
-            border-color: var(--input-focus-border-color);
-            box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
-            outline: none;
-        }
-
-        /* Ícones dentro dos campos de entrada */
-        .input-group .fa {
+            font-size: 2.5rem;
             position: absolute;
-            top: 42px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .form-floating {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: var(--border-radius-md);
+            padding: 1rem 0.75rem;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: var(--rayzen-primary);
+            box-shadow: 0 0 0 0.2rem rgba(255, 107, 53, 0.25);
+        }
+        
+        .form-floating > label {
+            color: #6c757d;
+            font-weight: 500;
+        }
+        
+        .password-toggle {
+            position: absolute;
             right: 15px;
-            color: #aaa;
-            transition: color var(--transition-speed);
-            cursor: pointer;
-        }
-
-        .input-group .fa:hover {
-            color: var(--primary-color);
-        }
-
-        /* Estilos dos botões */
-        input[type="submit"] {
-            width: 100%;
-            padding: 14px 0;
-            background-color: var(--button-bg-color);
-            color: white;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
             border: none;
-            border-radius: 8px;
-            font-size: 1em;
+            color: #6c757d;
             cursor: pointer;
-            transition: background-color var(--transition-speed), transform 0.2s ease, box-shadow var(--transition-speed);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            z-index: 10;
+            transition: color 0.3s ease;
+        }
+        
+        .password-toggle:hover {
+            color: var(--rayzen-primary);
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.1rem;
             font-weight: 600;
+            border-radius: var(--border-radius-md);
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
         }
-
-        input[type="submit"] i {
-            margin-right: 8px;
+        
+        .login-footer {
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9rem;
         }
-
-        input[type="submit"]:hover {
-            background-color: var(--button-hover-bg-color);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        input[type="submit"]:active {
-            background-color: var(--button-active-bg-color);
-        }
-
-        /* Link de Esqueceu a Senha */
-        p {
-            margin-top: 20px;
-            font-size: 0.95em;
-            color: #555;
-        }
-
-        a {
+        
+        .login-footer a {
+            color: var(--rayzen-primary);
             text-decoration: none;
-            color: var(--primary-color);
-            font-weight: bold;
-            transition: color var(--transition-speed);
+            font-weight: 500;
+            transition: color 0.3s ease;
         }
-
-        a:hover {
-            color: #357ABD;
+        
+        .login-footer a:hover {
+            color: var(--rayzen-secondary);
         }
-
-        /* Animações */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        @keyframes slideDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Responsividade */
-        @media (max-width: 480px) {
-            .container {
-                padding: 30px 20px;
-                width: 90%;
+        
+        @media (max-width: 576px) {
+            .login-container {
+                margin: 1rem;
+                padding: 2.5rem 1.5rem;
             }
-
-            h2 {
-                font-size: 1.5em;
+            
+            .login-title {
+                font-size: 1.8rem;
             }
-
-            input[type="submit"] {
-                font-size: 0.95em;
+            
+            .login-container::before {
+                width: 70px;
+                height: 70px;
+                top: -35px;
             }
-
-            .input-group .fa {
-                top: 35px;
+            
+            .brand-logo {
+                font-size: 2rem;
             }
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <h2><i class="fas fa-sign-in-alt"></i> Login</h2>
+{% endblock %}
 
-        <!-- Bloco para exibir as mensagens flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            <ul class="flash-messages">
-              {% for category, message in messages %}
-                <li class="{{ category }}">{{ message }}</li>
-              {% endfor %}
-            </ul>
-          {% endif %}
-        {% endwith %}
-
-        <form method="POST" action="/login">
-            <div class="input-group">
-                <label for="username">Usuário:</label>
-                <input type="text" id="username" name="username" required placeholder="Digite seu usuário">
-                <i class="fas fa-user"></i>
-            </div>
-
-            <div class="input-group">
-                <label for="password">Senha:</label>
-                <input type="password" id="password" name="password" required placeholder="Digite sua senha">
-                <i class="fas fa-eye" onclick="togglePasswordVisibility('password')"></i>
-            </div>
-
-            <input type="submit" value="Entrar">
-        </form>
+{% block content %}
+<div class="login-container fade-in">
+    <div class="brand-logo">
+        <i class="fas fa-gas-pump"></i>
+    </div>
+    
+    <div class="login-header">
+        <h1 class="login-title">
+            <span class="brand-element">Seja</span> Bem-vindo!
+        </h1>
+        <p class="login-subtitle">Sistema de Compartilhamento de Tela</p>
     </div>
 
-    <!-- Script para Alternar Mostrar/Ocultar Senha -->
-    <script>
-        function togglePasswordVisibility(fieldId) {
-            const field = document.getElementById(fieldId);
-            const toggleIcon = field.nextElementSibling;
-            if (field.type === "password") {
-                field.type = "text";
-                toggleIcon.classList.remove('fa-eye');
-                toggleIcon.classList.add('fa-eye-slash');
-            } else {
-                field.type = "password";
-                toggleIcon.classList.remove('fa-eye-slash');
-                toggleIcon.classList.add('fa-eye');
-            }
+    <form method="POST" action="{{ url_for('auth.login') }}" class="needs-validation" novalidate>
+        <div class="form-floating">
+            <input type="text" class="form-control" id="username" name="username" placeholder="Digite seu usuário" required>
+            <label for="username">
+                <i class="fas fa-user me-2"></i>Usuário
+            </label>
+            <div class="invalid-feedback">
+                Por favor, digite seu usuário.
+            </div>
+        </div>
+
+        <div class="form-floating position-relative">
+            <input type="password" class="form-control" id="password" name="password" placeholder="Digite sua senha" required>
+            <label for="password">
+                <i class="fas fa-lock me-2"></i>Senha
+            </label>
+            <button type="button" class="password-toggle" onclick="togglePasswordVisibility('password')">
+                <i class="fas fa-eye"></i>
+            </button>
+            <div class="invalid-feedback">
+                Por favor, digite sua senha.
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-rayzen-primary login-btn" data-loading="true">
+            <i class="fas fa-sign-in-alt me-2"></i>
+            Entrar na Plataforma
+        </button>
+    </form>
+
+    <div class="login-footer">
+        <p class="mb-0">
+            <i class="fas fa-shield-alt me-1"></i>
+            Acesso seguro e protegido
+        </p>
+        <small class="text-muted">
+            <i class="fas fa-copyright me-1"></i>
+            {{ moment().format('YYYY') if moment else '2025' }} Rayzen - Todos os direitos reservados
+        </small>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Form validation
+    (function() {
+        'use strict';
+        window.addEventListener('load', function() {
+            var forms = document.getElementsByClassName('needs-validation');
+            var validation = Array.prototype.filter.call(forms, function(form) {
+                form.addEventListener('submit', function(event) {
+                    if (form.checkValidity() === false) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        }, false);
+    })();
+
+    function togglePasswordVisibility(fieldId) {
+        const field = document.getElementById(fieldId);
+        const toggleIcon = field.parentNode.querySelector('.password-toggle i');
+        
+        if (field.type === "password") {
+            field.type = "text";
+            toggleIcon.classList.remove('fa-eye');
+            toggleIcon.classList.add('fa-eye-slash');
+        } else {
+            field.type = "password";
+            toggleIcon.classList.remove('fa-eye-slash');
+            toggleIcon.classList.add('fa-eye');
         }
-    </script>
-</body>
-</html>
+    }
+
+    // Add focus animation
+    document.querySelectorAll('.form-control').forEach(input => {
+        input.addEventListener('focus', function() {
+            this.parentNode.style.transform = 'translateY(-2px)';
+            this.parentNode.style.transition = 'all 0.3s ease';
+        });
+        
+        input.addEventListener('blur', function() {
+            this.parentNode.style.transform = 'translateY(0)';
+        });
+    });
+</script>
+{% endblock %}

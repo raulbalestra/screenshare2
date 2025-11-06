@@ -1,0 +1,373 @@
+{% extends "base_simple.html" %}
+
+{% block title %}Transmitir - ScreenShare HLS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="bg-glass rounded-4 p-4 card-shadow">
+            <div class="row">
+                <!-- Painel de Controle -->
+                <div class="col-md-4">
+                    <div class="card card-shadow h-100">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="bi bi-broadcast me-2"></i>Controles de Transmissão</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Formulário de Sessão -->
+                            <form id="sessionForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Estado</label>
+                                    <select class="form-select" id="stateSelect" required>
+                                        <option value="">Selecione o estado</option>
+                                        <option value="SP">São Paulo</option>
+                                        <option value="RJ">Rio de Janeiro</option>
+                                        <option value="MG">Minas Gerais</option>
+                                        <option value="PR">Paraná</option>
+                                        <option value="SC">Santa Catarina</option>
+                                        <option value="RS">Rio Grande do Sul</option>
+                                        <option value="BA">Bahia</option>
+                                        <option value="PE">Pernambuco</option>
+                                        <option value="CE">Ceará</option>
+                                        <option value="GO">Goiás</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">Nome do Transmissor</label>
+                                    <input type="text" class="form-control" id="publisherName" placeholder="Seu nome" required>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-gradient w-100 mb-3">
+                                    <i class="bi bi-plus-circle me-2"></i>Criar Sessão
+                                </button>
+                            </form>
+                            
+                            <hr>
+                            
+                            <!-- Controles de Transmissão -->
+                            <div id="transmissionControls" style="display: none;">
+                                <button id="btnStartCapture" class="btn btn-success w-100 mb-2">
+                                    <i class="bi bi-play-fill me-2"></i>Iniciar Captura
+                                </button>
+                                
+                                <button id="btnStopCapture" class="btn btn-danger w-100 mb-3" style="display: none;">
+                                    <i class="bi bi-stop-fill me-2"></i>Parar Transmissão
+                                </button>
+                                
+                                <div class="alert alert-info">
+                                    <strong>Status:</strong> <span id="statusText">Aguardando...</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Informações da Sessão -->
+                            <div id="sessionInfo" style="display: none;">
+                                <h6 class="mb-3">Informações da Sessão</h6>
+                                <div class="mb-2">
+                                    <small class="text-muted">ID da Sessão:</small>
+                                    <div class="font-monospace small" id="sessionId"></div>
+                                </div>
+                                <div class="mb-2">
+                                    <small class="text-muted">Link para Viewers:</small>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control font-monospace" id="viewerLink" readonly>
+                                        <button class="btn btn-outline-secondary" onclick="copyToClipboard('viewerLink')">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <small class="text-muted">QR Code:</small>
+                                    <div class="text-center mt-2">
+                                        <img id="qrCode" style="max-width: 150px;" alt="QR Code">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Preview da Tela -->
+                <div class="col-md-8">
+                    <div class="card card-shadow h-100">
+                        <div class="card-header bg-secondary text-white">
+                            <h5 class="mb-0"><i class="bi bi-display me-2"></i>Preview da Tela</h5>
+                        </div>
+                        <div class="card-body d-flex align-items-center justify-content-center" style="min-height: 400px;">
+                            <div id="previewContainer" class="text-center">
+                                <i class="bi bi-display display-1 text-muted mb-3"></i>
+                                <p class="text-muted">Clique em "Iniciar Captura" para visualizar sua tela</p>
+                            </div>
+                            <video id="localVideo" autoplay muted playsinline style="display: none; max-width: 100%; height: auto; border-radius: 0.5rem;"></video>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+class ScreenSharePublisher {
+    constructor() {
+        this.mediaStream = null;
+        this.peerConnection = null;
+        this.sessionData = null;
+    }
+    
+    async createSession(state, publisherName) {
+        try {
+            const response = await fetch('/api/session/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    state: state,
+                    publisher_name: publisherName
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Erro ao criar sessão');
+            }
+            
+            this.sessionData = await response.json();
+            this.displaySessionInfo();
+            
+            return this.sessionData;
+        } catch (error) {
+            console.error('Erro ao criar sessão:', error);
+            throw error;
+        }
+    }
+    
+    displaySessionInfo() {
+        document.getElementById('sessionId').textContent = this.sessionData.session_id;
+        document.getElementById('viewerLink').value = `${window.location.origin}/play/${this.sessionData.session_id}`;
+        document.getElementById('qrCode').src = this.sessionData.qr_code;
+        document.getElementById('sessionInfo').style.display = 'block';
+        document.getElementById('transmissionControls').style.display = 'block';
+    }
+    
+    async startScreenCapture() {
+        try {
+            this.updateStatus('Solicitando acesso à tela...');
+            
+            this.mediaStream = await navigator.mediaDevices.getDisplayMedia({
+                video: {
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    frameRate: { ideal: 30 }
+                },
+                audio: true
+            });
+            
+            // Mostrar preview
+            const localVideo = document.getElementById('localVideo');
+            localVideo.srcObject = this.mediaStream;
+            localVideo.style.display = 'block';
+            document.getElementById('previewContainer').style.display = 'none';
+            
+            // Iniciar transmissão WHIP
+            await this.startWHIPTransmission();
+            
+            this.updateStatus('Transmitindo...');
+            document.getElementById('btnStartCapture').style.display = 'none';
+            document.getElementById('btnStopCapture').style.display = 'block';
+            
+            // Detectar quando usuário para o compartilhamento
+            this.mediaStream.getVideoTracks()[0].addEventListener('ended', () => {
+                this.stopTransmission();
+            });
+            
+        } catch (error) {
+            console.error('Erro ao capturar tela:', error);
+            this.updateStatus('Erro ao capturar tela');
+            alert('Erro ao acessar a tela. Verifique as permissões do navegador.');
+        }
+    }
+    
+    async startWHIPTransmission() {
+        try {
+            // Configurar PeerConnection
+            this.peerConnection = new RTCPeerConnection({
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' }
+                ]
+            });
+            
+            // Adicionar tracks ao PeerConnection
+            this.mediaStream.getTracks().forEach(track => {
+                this.peerConnection.addTrack(track, this.mediaStream);
+            });
+            
+            // Configurar codec preferences para forçar H264
+            const transceivers = this.peerConnection.getTransceivers();
+            const videoTransceiver = transceivers.find(t => t.sender && t.sender.track && t.sender.track.kind === 'video');
+            
+            if (videoTransceiver && 'setCodecPreferences' in videoTransceiver) {
+                const capabilities = RTCRtpSender.getCapabilities('video');
+                console.log('Codecs disponíveis:', capabilities.codecs);
+                
+                // Filtrar apenas H264
+                const h264Codecs = capabilities.codecs.filter(codec => 
+                    codec.mimeType.toLowerCase().includes('h264')
+                );
+                
+                if (h264Codecs.length > 0) {
+                    console.log('Forçando H264:', h264Codecs);
+                    videoTransceiver.setCodecPreferences(h264Codecs);
+                } else {
+                    console.warn('H264 não disponível, codecs disponíveis:', capabilities.codecs.map(c => c.mimeType));
+                }
+            }
+            
+            // Criar offer
+            const offer = await this.peerConnection.createOffer();
+            
+            // Modificar SDP para forçar H264
+            offer.sdp = this.forceH264InSDP(offer.sdp);
+            
+            await this.peerConnection.setLocalDescription(offer);
+            
+            // Enviar offer via WHIP (MediaMTX format)
+            console.log('Enviando para:', this.sessionData.publish_url);
+            const whipResponse = await fetch(this.sessionData.publish_url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/sdp'
+                },
+                body: offer.sdp
+            });
+            
+            console.log('Response status:', whipResponse.status);
+            if (!whipResponse.ok) {
+                const errorText = await whipResponse.text();
+                console.error('WHIP Error:', errorText);
+                throw new Error(`Erro na conexão WHIP: ${whipResponse.status} - ${errorText}`);
+            }
+            
+            const answerSdp = await whipResponse.text();
+            console.log('Answer SDP recebido:', answerSdp);
+            await this.peerConnection.setRemoteDescription({
+                type: 'answer',
+                sdp: answerSdp
+            });
+            
+        } catch (error) {
+            console.error('Erro na transmissão WHIP:', error);
+            throw error;
+        }
+    }
+    
+    stopTransmission() {
+        if (this.mediaStream) {
+            this.mediaStream.getTracks().forEach(track => track.stop());
+            this.mediaStream = null;
+        }
+        
+        if (this.peerConnection) {
+            this.peerConnection.close();
+            this.peerConnection = null;
+        }
+        
+        // Resetar UI
+        document.getElementById('localVideo').style.display = 'none';
+        document.getElementById('previewContainer').style.display = 'block';
+        document.getElementById('btnStartCapture').style.display = 'block';
+        document.getElementById('btnStopCapture').style.display = 'none';
+        
+        this.updateStatus('Transmissão parada');
+    }
+    
+    updateStatus(status) {
+        document.getElementById('statusText').textContent = status;
+    }
+    
+    forceH264InSDP(sdp) {
+        console.log('SDP original:', sdp);
+        
+        // Filtrar apenas codecs H264 e remover VP8/VP9
+        let modifiedSdp = sdp;
+        
+        // Remover linhas VP8
+        modifiedSdp = modifiedSdp.replace(/a=rtpmap:\d+ VP8\/90000\r?\n/g, '');
+        modifiedSdp = modifiedSdp.replace(/a=rtcp-fb:\d+ .*VP8.*\r?\n/g, '');
+        modifiedSdp = modifiedSdp.replace(/a=fmtp:\d+ .*VP8.*\r?\n/g, '');
+        
+        // Remover linhas VP9
+        modifiedSdp = modifiedSdp.replace(/a=rtpmap:\d+ VP9\/90000\r?\n/g, '');
+        modifiedSdp = modifiedSdp.replace(/a=rtcp-fb:\d+ .*VP9.*\r?\n/g, '');
+        modifiedSdp = modifiedSdp.replace(/a=fmtp:\d+ .*VP9.*\r?\n/g, '');
+        
+        // Encontrar payload types do VP8/VP9 e remover da linha m=video
+        const vp8Match = sdp.match(/a=rtpmap:(\d+) VP8/);
+        const vp9Match = sdp.match(/a=rtpmap:(\d+) VP9/);
+        
+        if (vp8Match || vp9Match) {
+            const lines = modifiedSdp.split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                if (lines[i].startsWith('m=video')) {
+                    let parts = lines[i].split(' ');
+                    // Remover VP8/VP9 payload types
+                    if (vp8Match) {
+                        parts = parts.filter(p => p !== vp8Match[1]);
+                    }
+                    if (vp9Match) {
+                        parts = parts.filter(p => p !== vp9Match[1]);
+                    }
+                    lines[i] = parts.join(' ');
+                    break;
+                }
+            }
+            modifiedSdp = lines.join('\n');
+        }
+        
+        console.log('SDP modificado:', modifiedSdp);
+        return modifiedSdp;
+    }
+}
+
+// Inicializar publisher
+const publisher = new ScreenSharePublisher();
+
+// Event listeners
+document.getElementById('sessionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const state = document.getElementById('stateSelect').value;
+    const publisherName = document.getElementById('publisherName').value;
+    
+    try {
+        await publisher.createSession(state, publisherName);
+    } catch (error) {
+        alert('Erro ao criar sessão: ' + error.message);
+    }
+});
+
+document.getElementById('btnStartCapture').addEventListener('click', () => {
+    publisher.startScreenCapture();
+});
+
+document.getElementById('btnStopCapture').addEventListener('click', () => {
+    publisher.stopTransmission();
+});
+
+function copyToClipboard(elementId) {
+    const element = document.getElementById(elementId);
+    element.select();
+    document.execCommand('copy');
+    
+    // Feedback visual
+    const button = event.target.closest('button');
+    const originalIcon = button.innerHTML;
+    button.innerHTML = '<i class="bi bi-check"></i>';
+    setTimeout(() => {
+        button.innerHTML = originalIcon;
+    }, 1000);
+}
+</script>
+{% endblock %}

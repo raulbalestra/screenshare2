@@ -1,11 +1,134 @@
 
-# Screen Sharing App
+# ScreenShare HLS - Sistema Completo de Transmissão
 
-Este é um aplicativo Flask que permite o login de usuários, troca de senha e compartilhamento de tela. O projeto utiliza um banco de dados SQLite para armazenar informações de login e senha, e fornece uma interface simples para os usuários interagirem.
+Sistema profissional de compartilhamento de tela com streaming HLS, separação por estados e autenticação JWT.
 
-## Estrutura do Projeto
+## 🚀 Características
 
-Screen_Sharing/ │ ├── app.py # Arquivo principal do Flask com todas as rotas e lógica ├── create_db.py # Script para criar e popular o banco de dados ├── users.db # Arquivo de banco de dados SQLite (gerado após executar create_db.py) ├── templates/ # Diretório para armazenar arquivos HTML │ ├── login.html # Página de login │ ├── change_password.html # Página de troca de senha │ └── share_screen.html # Página de compartilhamento de tela └── static/ # Diretório para arquivos estáticos (CSS, imagens, etc.) └── styles.css # Arquivo CSS para estilos adicionais (opcional)
+- **Frontend**: HTML5 + Bootstrap 5 (sem frameworks complexos)
+- **Backend**: FastAPI com autenticação JWT
+- **Streaming**: MediaMTX com WHIP ingest + LL-HLS output
+- **Separação**: Cada estado tem suas próprias sessões isoladas
+- **Baixa Latência**: LL-HLS com segmentos de 1s e partes de 200ms
+- **Banco**: SQLite para simplicidade
+- **QR Code**: Geração automática para acesso móvel
+
+## 📋 Requisitos
+
+- Python 3.11+
+- MediaMTX (baixado automaticamente)
+- Navegador moderno com suporte a WebRTC/getDisplayMedia
+- Ubuntu 20.04+ (para produção)
+
+## 🛠️ Instalação Local (Desenvolvimento)
+
+### 1. Configurar Ambiente
+```bash
+# Criar ambiente virtual
+python3 -m venv venv
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+
+# Instalar dependências
+pip install -r requirements.txt
+```
+
+### 2. Configurar Variáveis (.env)
+```bash
+cat > .env << EOF
+APP_HOST=localhost
+APP_PORT=8000
+DEBUG=True
+JWT_SECRET_KEY=sua_chave_jwt_super_secreta_aqui
+MEDIAMTX_HOST=localhost
+MEDIAMTX_WHIP_PORT=8889
+MEDIAMTX_HLS_PORT=8888
+ALLOWED_STATES=SP,RJ,MG,PR,SC,RS,BA,PE,CE,GO
+DATABASE_PATH=sessions.db
+EOF
+```
+
+### 3. Iniciar Sistema
+```bash
+# Dar permissão aos scripts
+chmod +x scripts/*.sh
+
+# Iniciar em modo desenvolvimento
+./scripts/start.sh dev
+```
+
+### 4. Acessar Sistema
+- **Interface Web**: http://localhost:8000
+- **Transmitir**: http://localhost:8000/publish
+- **Assistir**: http://localhost:8000/play/{session_id}
+
+## 🌐 Instalação VPS (Produção)
+
+### Instalação Automática Ubuntu
+```bash
+# Download e execução do script
+curl -sSL https://raw.githubusercontent.com/seu-repo/screenshare2/main/scripts/install.sh | bash
+```
+
+## 📡 Como Usar
+
+### 1. Criar Sessão de Transmissão
+1. Acesse `/publish`
+2. Selecione o estado (SP, RJ, MG, etc.)
+3. Digite seu nome
+4. Clique "Criar Sessão"
+5. Clique "Iniciar Captura" e selecione a tela
+6. Compartilhe o link ou QR Code gerado
+
+### 2. Assistir Transmissão
+1. Acesse o link `/play/{session_id}` 
+2. Ou use o QR Code no celular
+3. O vídeo iniciará automaticamente
+
+### 3. Estados e Isolamento
+- Cada estado (SP, RJ, MG...) tem streams independentes
+- URLs seguem padrão: `/hls/{estado}/{session_id}/index.m3u8`
+- Não há conflito entre sessões de estados diferentes
+
+## 📊 API Endpoints
+
+### Sessões
+- `POST /api/session/create` - Criar sessão
+- `GET /api/session/{id}/play` - Info para reprodução
+- `GET /api/health` - Health check
+
+### Streaming
+- `POST /whip/{estado}/{session_id}` - WHIP ingest
+- `GET /hls/{estado}/{session_id}/index.m3u8` - HLS playlist
+
+## 🔒 Segurança
+
+### JWT Tokens
+- **Publish Token**: Permite transmitir na sessão
+- **Play Token**: Permite assistir a sessão
+- Expiração configurável (24h padrão)
+
+## 🐛 Troubleshooting
+
+### 1. MediaMTX não inicia
+```bash
+# Verificar logs
+sudo journalctl -u mediamtx -f
+
+# Reiniciar
+sudo systemctl restart mediamtx
+```
+
+### 2. Captura de tela não funciona
+- Verificar se está usando HTTPS (necessário para getDisplayMedia)
+- Testar em navegadores diferentes
+- Verificar permissões do navegador
+
+### 3. HLS não carrega
+```bash
+# Testar URL diretamente
+curl http://localhost:8888/hls/SP/test-session/index.m3u8
+```
 
 bash
 Copiar código
