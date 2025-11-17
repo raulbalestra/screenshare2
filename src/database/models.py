@@ -36,7 +36,8 @@ class DatabaseManager:
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
-                    username TEXT UNIQUE NOT NULL,
+                    username TEXT UNIQUE,
+                    email TEXT UNIQUE NOT NULL,
                     password TEXT NOT NULL,
                     localidade VARCHAR(100) NOT NULL,
                     is_admin BOOLEAN DEFAULT FALSE,
@@ -71,23 +72,36 @@ class DatabaseManager:
                 );
             """)
 
+            # Tabela de refresh tokens para gerenciamento e revogação
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS refresh_tokens (
+                    jti TEXT PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    expires_at TIMESTAMP NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+
             # Inserir usuários padrão se a tabela estiver vazia
+            # Ensure migrations for older DBs (add email column if missing)
+            DatabaseManager.migrate_add_email_column(conn, cursor)
+
             cursor.execute("SELECT COUNT(*) FROM users")
             user_count = cursor.fetchone()[0]
             
             if user_count == 0:
                 default_users = [
-                    ("curitiba_user", "senha_curitiba", "curitiba", False, True),
-                    ("sp_user", "senha_sp", "sp", False, True),
-                    ("admin", "admin", "admin", True, True),
+                    ("curitiba_user", "curitiba_user@example.com", "senha_curitiba", "curitiba", False, True),
+                    ("sp_user", "sp_user@example.com", "senha_sp", "sp", False, True),
+                    ("admin", "admin@example.com", "admin", "admin", True, True),
                 ]
-                
-                for username, password, localidade, is_admin, is_active in default_users:
+
+                for username, email, password, localidade, is_admin, is_active in default_users:
                     hashed_password = generate_password_hash(password)
                     cursor.execute("""
-                        INSERT INTO users (username, password, localidade, is_admin, is_active)
-                        VALUES (%s, %s, %s, %s, %s)
-                    """, (username, hashed_password, localidade, is_admin, is_active))
+                        INSERT INTO users (username, email, password, localidade, is_admin, is_active)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    """, (username, email, hashed_password, localidade, is_admin, is_active))
             
             conn.commit()
             print("Tabelas criadas com sucesso!")
@@ -100,6 +114,63 @@ class DatabaseManager:
             cursor.close()
             conn.close()
 
+    @staticmethod
+    def migrate_add_email_column(conn=None, cursor=None):
+        """Migration helper: add 'email' column to users table for existing databases.
+
+        If called with no connection/cursor, a new connection is opened.
+        This will:
+        - add the email column if missing
+        - populate email from username when username looks like an email
+        - for remaining NULL emails, populate a placeholder (username@local)
+        - create a unique index on email and set NOT NULL
+        """
+        close_conn = False
+        if conn is None or cursor is None:
+            conn = DatabaseManager.get_connection()
+            cursor = conn.cursor()
+            close_conn = True
+
+        try:
+            # Check if column exists
+            cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='email'")
+            exists = cursor.fetchone()
+            if exists:
+                return
+
+            print("Applying migration: adding 'email' column to users table...")
+            cursor.execute("ALTER TABLE users ADD COLUMN email TEXT")
+
+            # Populate email where username already looks like an email
+            cursor.execute("UPDATE users SET email = username WHERE username LIKE %s", ("%@%",))
+
+            # For remaining rows, set a placeholder using username
+            cursor.execute("UPDATE users SET email = username || %s WHERE email IS NULL", ('@local',))
+
+            # Try to create unique index on email
+            try:
+                cursor.execute("CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_idx ON users (email)")
+            except Exception as e:
+                print(f"Warning: could not create unique index on users.email: {e}")
+
+            # Set NOT NULL constraint
+            try:
+                cursor.execute("ALTER TABLE users ALTER COLUMN email SET NOT NULL")
+            except Exception as e:
+                print(f"Warning: could not set users.email NOT NULL: {e}")
+
+            conn.commit()
+            print("Migration applied: email column added/updated.")
+        except Exception as e:
+            print(f"Erro na migração add email: {e}")
+            if conn:
+                conn.rollback()
+            raise
+        finally:
+            if close_conn:
+                cursor.close()
+                conn.close()
+
 
 class UserManager:
     """Gerenciador de operações relacionadas a usuários"""
@@ -111,19 +182,21 @@ class UserManager:
         cursor = conn.cursor()
         
         try:
-            cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
+            # The parameter may be an email or username. Try to find by email first then username.
+            cursor.execute("SELECT id, username, email, password, localidade, is_admin, is_active FROM users WHERE email = %s OR username = %s", (username, username))
             user = cursor.fetchone()
-            
-            if user and check_password_hash(user[2], password):  # user[2] é a coluna password
-                if user[5]:  # user[5] é a coluna is_active
-                    return user[3], user[4]  # Retorna localidade (user[3]) e is_admin (user[4])
+
+            if user and check_password_hash(user[3], password):  # password at index 3
+                if user[6]:  # is_active at index 6
+                    # return a tuple with useful fields: id, username, email, localidade, is_admin
+                    return (user[0], user[1], user[2], user[4], user[5])
                 else:
-                    return "blocked", None
-            return None, None
+                    return "blocked"
+            return None
             
         except psycopg2.Error as e:
             print(f"Erro ao autenticar usuário: {e}")
-            return None, None
+            return None
         finally:
             cursor.close()
             conn.close()
@@ -135,7 +208,8 @@ class UserManager:
         cursor = conn.cursor()
         
         try:
-            cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+            # username may be either username or email
+            cursor.execute("SELECT id FROM users WHERE username = %s OR email = %s", (username, username))
             result = cursor.fetchone()
             return result[0] if result else None
         except psycopg2.Error as e:
@@ -152,8 +226,21 @@ class UserManager:
         cursor = conn.cursor()
         
         try:
-            cursor.execute("SELECT id, username, localidade, is_admin, is_active FROM users")
-            return cursor.fetchall()
+            cursor.execute("SELECT id, username, email, localidade, is_admin, is_active, created_at FROM users ORDER BY id")
+            rows = cursor.fetchall()
+            # return as list of dicts for easier JSON serialization
+            users = []
+            for r in rows:
+                users.append({
+                    'id': r[0],
+                    'username': r[1],
+                    'email': r[2],
+                    'localidade': r[3],
+                    'is_admin': r[4],
+                    'is_active': r[5],
+                    'created_at': r[6].isoformat() if r[6] else None
+                })
+            return users
         except psycopg2.Error as e:
             print(f"Erro ao buscar usuários: {e}")
             return []
@@ -162,17 +249,17 @@ class UserManager:
             conn.close()
     
     @staticmethod
-    def create_user(username, password, localidade):
-        """Cria um novo usuário"""
+    def create_user(username, email, password, localidade, is_admin=False):
+        """Cria um novo usuário (email required)"""
         conn = DatabaseManager.get_connection()
         cursor = conn.cursor()
         
         try:
             hashed_password = generate_password_hash(password)
             cursor.execute("""
-                INSERT INTO users (username, password, localidade, is_admin, is_active)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (username, hashed_password, localidade, False, True))
+                INSERT INTO users (username, email, password, localidade, is_admin, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (username, email, hashed_password, localidade, is_admin, True))
             
             conn.commit()
             return True
@@ -240,6 +327,66 @@ class UserManager:
             return False
         finally:
             cursor.close()
+            conn.close()
+
+    # --- Refresh token management ---
+    @staticmethod
+    def save_refresh_token(jti: str, user_id: int, expires_at):
+        conn = DatabaseManager.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("INSERT INTO refresh_tokens (jti, user_id, expires_at) VALUES (%s, %s, %s)", (jti, user_id, expires_at))
+            conn.commit()
+            return True
+        except psycopg2.IntegrityError:
+            conn.rollback()
+            return False
+        except psycopg2.Error as e:
+            print(f"Erro ao salvar refresh token: {e}")
+            conn.rollback()
+            return False
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def revoke_refresh_token(jti: str):
+        conn = DatabaseManager.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("DELETE FROM refresh_tokens WHERE jti = %s", (jti,))
+            conn.commit()
+            return True
+        except psycopg2.Error as e:
+            print(f"Erro ao revogar refresh token: {e}")
+            conn.rollback()
+            return False
+        finally:
+            cur.close()
+            conn.close()
+
+    @staticmethod
+    def is_refresh_token_valid(jti: str, user_id: int):
+        conn = DatabaseManager.get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT expires_at FROM refresh_tokens WHERE jti = %s AND user_id = %s", (jti, user_id))
+            row = cur.fetchone()
+            if not row:
+                return False
+            expires_at = row[0]
+            from datetime import datetime
+            if expires_at and expires_at < datetime.utcnow():
+                # expired — remove it
+                cur.execute("DELETE FROM refresh_tokens WHERE jti = %s", (jti,))
+                conn.commit()
+                return False
+            return True
+        except psycopg2.Error as e:
+            print(f"Erro ao validar refresh token: {e}")
+            return False
+        finally:
+            cur.close()
             conn.close()
 
 

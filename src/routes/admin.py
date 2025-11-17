@@ -38,12 +38,13 @@ def add_new_user():
         username = request.form["username"]
         password = request.form["password"]
         localidade = request.form["localidade"]
+        email = request.form.get("email") or username
 
         if not username or not password or not localidade:
             flash("Todos os campos são obrigatórios!", "error")
             return redirect(url_for("admin.add_new_user"))
 
-        if UserManager.create_user(username, password, localidade):
+        if UserManager.create_user(username, email, password, localidade):
             flash("Usuário adicionado com sucesso!", "success")
         else:
             flash("Erro: Nome de usuário já existe!", "error")

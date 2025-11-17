@@ -19,6 +19,11 @@ class Config:
     JWT_ALGORITHM = 'HS256'
     JWT_PUBLISH_EXPIRE_HOURS = 24
     JWT_PLAY_EXPIRE_HOURS = 24
+    # Access token (login) expiration (hours)
+    JWT_ACCESS_EXPIRE_HOURS = int(os.getenv('JWT_ACCESS_EXPIRE_HOURS', '1'))
+    # Refresh token lifetime (days)
+    JWT_REFRESH_EXPIRE_DAYS = int(os.getenv('JWT_REFRESH_EXPIRE_DAYS', '7'))
+    REFRESH_COOKIE_NAME = os.getenv('REFRESH_COOKIE_NAME', 'refresh_token')
     
     # MediaMTX
     MEDIAMTX_HOST = os.getenv('MEDIAMTX_HOST', 'localhost')
@@ -31,3 +36,5 @@ class Config:
     
     # Estados permitidos (pode ser configurado via env)
     ALLOWED_STATES = os.getenv('ALLOWED_STATES', 'SP,RJ,MG,PR,SC,RS,BA,PE,CE,GO').split(',')
+    # Frontend origin(s) allowed for CORS (comma-separated)
+    FRONTEND_ORIGINS = os.getenv('FRONTEND_ORIGINS', 'http://localhost:5173').split(',')
