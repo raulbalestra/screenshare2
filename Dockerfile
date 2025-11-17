@@ -61,8 +61,8 @@ COPY config/mediamtx.yml /etc/mediamtx/mediamtx.yml
 # ===== SETUP Nginx com SSL =====
 RUN mkdir -p /etc/nginx/ssl /etc/nginx/conf.d
 COPY config/nginx.conf /etc/nginx/conf.d/default.conf
-COPY config/ssl/cert.pem /etc/nginx/ssl/fullchain.pem
-COPY config/ssl/key.pem /etc/nginx/ssl/privkey.pem
+COPY config/ssl_letsencrypt/fullchain.pem /etc/nginx/ssl/fullchain.pem
+COPY config/ssl_letsencrypt/privkey.pem /etc/nginx/ssl/privkey.pem
 RUN chmod 644 /etc/nginx/ssl/fullchain.pem && \
     chmod 600 /etc/nginx/ssl/privkey.pem
 
