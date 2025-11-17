@@ -95,11 +95,11 @@ stdout_logfile=/var/log/supervisor/mediamtx.out.log
 priority=998
 
 [program:fastapi]
-command=bash -c "sleep 5 && python3 migrate_db.py && python3 -m uvicorn app:app --host 0.0.0.0 --port 8000"
+command=bash -c "python3 -m uvicorn app:app --host 0.0.0.0 --port 8000"
 directory=/app
 autostart=true
 autorestart=true
-startsecs=15
+startsecs=5
 stderr_logfile=/var/log/supervisor/fastapi.err.log
 stdout_logfile=/var/log/supervisor/fastapi.out.log
 priority=997
@@ -153,9 +153,38 @@ else
     echo "[OK] PostgreSQL já inicializado"
 fi
 
-# Iniciar supervisor
+# Iniciar supervisor em background
 echo "[OK] Iniciando supervisor..."
-exec /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+/usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf &
+SUPERVISOR_PID=$!
+
+# Aguardar PostgreSQL estar pronto
+echo "[WAIT] Aguardando PostgreSQL ficar disponível..."
+for i in {1..60}; do
+    if su - postgres -c "pg_isready -h localhost -p 5432" 2>/dev/null | grep -q "accepting"; then
+        echo "[OK] PostgreSQL está pronto!"
+        break
+    fi
+    echo "[WAIT] Tentativa $i/60..."
+    sleep 1
+done
+
+# Criar usuário e banco de dados se não existirem
+echo "[INIT] Verificando banco de dados..."
+su - postgres -c "psql -h localhost -p 5432 -tc \"SELECT 1 FROM pg_database WHERE datname = 'screenshare'\" | grep -q 1" || {
+    echo "[INIT] Criando usuário e banco de dados..."
+    su - postgres -c "psql -h localhost -p 5432 -c \"CREATE USER screenshare WITH PASSWORD 'screenshare_secure_pass_123'; CREATE DATABASE screenshare OWNER screenshare; GRANT ALL PRIVILEGES ON DATABASE screenshare TO screenshare;\""
+    echo "[OK] Usuário e banco de dados criados"
+}
+
+# Executar migrations
+echo "[INIT] Executando migrações do banco de dados..."
+cd /app
+python3 migrate_db.py
+echo "[OK] Migrações concluídas"
+
+# Manter supervisor em foreground
+wait $SUPERVISOR_PID
 EOF
 
 RUN chmod +x /app/entrypoint.sh
