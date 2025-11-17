@@ -20,6 +20,7 @@ RUN apt-get update && apt-get install -y \
     gcc \
     postgresql-client \
     supervisor \
+    nginx \
     git \
     && rm -rf /var/lib/apt/lists/*
 
@@ -28,20 +29,22 @@ WORKDIR /app
 
 # ===== SETUP PYTHON =====
 COPY requirements.txt .
-RUN python3 -m pip install --upgrade pip && \
-    pip install -r requirements.txt
+RUN python3 -m pip install --upgrade pip setuptools wheel && \
+    pip install -r requirements.txt && \
+    pip install uvicorn
 
 # Copiar código da aplicação
 COPY . .
 
 # ===== SETUP PostgreSQL =====
-RUN mkdir -p /var/run/postgresql && \
-    chown postgres:postgres /var/run/postgresql && \
-    mkdir -p /app/data/postgres && \
-    chown -R postgres:postgres /app/data/postgres
+RUN mkdir -p /var/lib/postgresql/data && \
+    chown -R postgres:postgres /var/lib/postgresql/data && \
+    chmod 700 /var/lib/postgresql/data && \
+    mkdir -p /var/run/postgresql && \
+    chown postgres:postgres /var/run/postgresql
 
 # Inicializar banco de dados PostgreSQL
-RUN sudo -u postgres /usr/lib/postgresql/14/bin/initdb -D /app/data/postgres || true
+RUN su - postgres -c "/usr/lib/postgresql/14/bin/initdb -D /var/lib/postgresql/data" || true
 
 # ===== SETUP MediaMTX =====
 RUN cd /tmp && \
@@ -55,17 +58,25 @@ RUN cd /tmp && \
 RUN mkdir -p /etc/mediamtx
 COPY config/mediamtx.yml /etc/mediamtx/mediamtx.yml
 
+# ===== SETUP Nginx com SSL =====
+RUN mkdir -p /etc/nginx/ssl /etc/nginx/conf.d
+COPY config/nginx.conf /etc/nginx/conf.d/default.conf
+COPY config/ssl/cert.pem /etc/nginx/ssl/cert.pem
+COPY config/ssl/key.pem /etc/nginx/ssl/key.pem
+RUN chmod 644 /etc/nginx/ssl/cert.pem && \
+    chmod 600 /etc/nginx/ssl/key.pem
+
 # ===== SETUP Supervisor para gerenciar processos =====
 RUN mkdir -p /var/log/supervisor
 
-COPY <<EOF /etc/supervisor/conf.d/supervisord.conf
+RUN cat > /etc/supervisor/conf.d/supervisord.conf <<'SUPERVISOR_EOF'
 [supervisord]
 nodaemon=true
 logfile=/var/log/supervisor/supervisord.log
 pidfile=/var/run/supervisord.pid
 
 [program:postgresql]
-command=/usr/lib/postgresql/14/bin/postgres -D /app/data/postgres
+command=/usr/lib/postgresql/14/bin/postgres -D /var/lib/postgresql/data
 autostart=true
 autorestart=true
 stderr_logfile=/var/log/supervisor/postgres.err.log
@@ -80,12 +91,19 @@ stderr_logfile=/var/log/supervisor/mediamtx.err.log
 stdout_logfile=/var/log/supervisor/mediamtx.out.log
 
 [program:fastapi]
-command=bash -c "sleep 3 && python migrate_db.py && uvicorn app:app --host 0.0.0.0 --port 8000"
+command=bash -c "sleep 3 && python3 migrate_db.py && python3 -m uvicorn app:app --host 0.0.0.0 --port 8000"
 directory=/app
 autostart=true
 autorestart=true
 stderr_logfile=/var/log/supervisor/fastapi.err.log
 stdout_logfile=/var/log/supervisor/fastapi.out.log
+
+[program:nginx]
+command=/usr/sbin/nginx -g "daemon off;"
+autostart=true
+autorestart=true
+stderr_logfile=/var/log/supervisor/nginx.err.log
+stdout_logfile=/var/log/supervisor/nginx.out.log
 
 [unix_http_server]
 file=/var/run/supervisor.sock
@@ -96,7 +114,7 @@ serverurl=unix:///var/run/supervisor.sock
 
 [rpcinterface:supervisor]
 supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
-EOF
+SUPERVISOR_EOF
 
 # Criar script de inicialização
 RUN mkdir -p /app/logs
@@ -106,12 +124,12 @@ COPY <<'EOF' /app/entrypoint.sh
 set -e
 
 echo "Aguardando inicialização do PostgreSQL..."
-sleep 5
+sleep 2
 
 # Verificar se banco foi inicializado
-if [ ! -f /app/data/postgres/PG_VERSION ]; then
+if [ ! -f /var/lib/postgresql/data/PG_VERSION ]; then
     echo "Inicializando PostgreSQL..."
-    sudo -u postgres /usr/lib/postgresql/14/bin/initdb -D /app/data/postgres
+    su - postgres -c "/usr/lib/postgresql/14/bin/initdb -D /var/lib/postgresql/data"
 fi
 
 # Iniciar supervisor
@@ -122,7 +140,7 @@ EOF
 RUN chmod +x /app/entrypoint.sh
 
 # Expor portas
-EXPOSE 8000 8888 8889 9997 5432
+EXPOSE 80 443 8000 8888 8889 9997 5432
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
