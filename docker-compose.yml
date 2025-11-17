@@ -1,52 +1,30 @@
+version: "3.9"
+
 services:
   screenshare:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: screenshare_all_in_one
-    ports:
-      - "80:80"        # Nginx HTTP
-      - "443:443"      # Nginx HTTPS
-      - "8000:8000"    # API (interno)
-      - "8888:8888"    # HLS (interno)
-      - "8889:8889"    # WHIP (interno)
-      - "9997:9997"    # MediaMTX API (interno)
-      - "5432:5432"    # PostgreSQL (opcional)
-    volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data
-    environment:
-      # Database
-      DATABASE_URL: postgresql://screenshare:screenshare_secure_pass_123@localhost:5432/screenshare
-      DB_HOST: localhost
-      DB_PORT: 5432
-      DB_NAME: screenshare
-      DB_USER: screenshare
-      DB_PASSWORD: screenshare_secure_pass_123
-      
-      # Application
-      DEBUG: 'false'
-      SECRET_KEY: your-secret-key-change-in-production
-      
-      # JWT
-      JWT_ALGORITHM: HS256
-      JWT_EXPIRATION_HOURS: 24
-      
-      # MediaMTX
-      MEDIAMTX_HOST: localhost
-      MEDIAMTX_HLS_PORT: 8888
-      MEDIAMTX_WHIP_PORT: 8889
-      
-      # Frontend
-      APP_HOST: localhost
-      APP_PORT: 8000
-      FRONTEND_ORIGINS: https://beautiful-backend-booster.vercel.app,http://localhost:8080,http://localhost:3000
-      
-      # CORS
-      ALLOWED_ORIGINS: "*"
     restart: unless-stopped
+    environment:
+      DB_HOST: evo-pg
+      DB_PORT: 5432
+      DB_NAME: screenshare_db
+      DB_USER: screenshare_user
+      DB_PASSWORD: ScreenShare2025!
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+    ports:
+      - "8000:8000"
+      - "8888:8888"
+      - "8889:8889"
+      - "9997:9997"
+    networks:
+      - evo-network
+    external_links:
+      - evo-pg
 
 networks:
-  screenshare-network:
-    driver: bridge
-
+  evo-network:
+    external: true

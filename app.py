@@ -228,11 +228,12 @@ async def api_login(credentials: dict):
         # Build response with cookies
         resp = {'user': {'id': user_id, 'username': username, 'email': user_email, 'localidade': localidade, 'is_admin': is_admin}}
         response = JSONResponse(content=resp)
-        secure_flag = not Config.DEBUG
+        # Use secure=True and samesite='none' for cross-origin requests (Vercel -> VPS)
+        secure_flag = True  # Always use secure in production
         # Set access token cookie (short-lived)
-        response.set_cookie(key='access_token', value=access_token, httponly=True, secure=secure_flag, samesite='lax', path='/', max_age=Config.JWT_ACCESS_EXPIRE_HOURS * 3600)
+        response.set_cookie(key='access_token', value=access_token, httponly=True, secure=secure_flag, samesite='none', path='/', max_age=Config.JWT_ACCESS_EXPIRE_HOURS * 3600)
         # Set refresh token cookie (long-lived)
-        response.set_cookie(key=Config.REFRESH_COOKIE_NAME, value=refresh_token, httponly=True, secure=secure_flag, samesite='lax', path='/', max_age=Config.JWT_REFRESH_EXPIRE_DAYS * 24 * 3600)
+        response.set_cookie(key=Config.REFRESH_COOKIE_NAME, value=refresh_token, httponly=True, secure=secure_flag, samesite='none', path='/', max_age=Config.JWT_REFRESH_EXPIRE_DAYS * 24 * 3600)
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -427,11 +428,11 @@ async def api_refresh(request: Request):
     expires_at = datetime.utcnow() + timedelta(days=Config.JWT_REFRESH_EXPIRE_DAYS)
     UserManager.save_refresh_token(new_jti, user_id, expires_at)
 
-    # Set cookies
-    secure_flag = not Config.DEBUG
+    # Set cookies (cross-origin compatible)
+    secure_flag = True  # Always secure in production
     response = JSONResponse(content={'ok': True})
-    response.set_cookie(key='access_token', value=access_token, httponly=True, secure=secure_flag, samesite='lax', path='/', max_age=Config.JWT_ACCESS_EXPIRE_HOURS * 3600)
-    response.set_cookie(key=Config.REFRESH_COOKIE_NAME, value=refresh_token_new, httponly=True, secure=secure_flag, samesite='lax', path='/', max_age=Config.JWT_REFRESH_EXPIRE_DAYS * 24 * 3600)
+    response.set_cookie(key='access_token', value=access_token, httponly=True, secure=secure_flag, samesite='none', path='/', max_age=Config.JWT_ACCESS_EXPIRE_HOURS * 3600)
+    response.set_cookie(key=Config.REFRESH_COOKIE_NAME, value=refresh_token_new, httponly=True, secure=secure_flag, samesite='none', path='/', max_age=Config.JWT_REFRESH_EXPIRE_DAYS * 24 * 3600)
     return response
 
 @app.get("/api/districts/{uf}")

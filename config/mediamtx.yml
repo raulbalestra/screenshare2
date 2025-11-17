@@ -7,11 +7,10 @@ logDestinations: [stdout]
 
 # API settings
 api: yes
-apiAddress: 127.0.0.1:9997
+apiAddress: :9997
 
 # Metrics
-metrics: yes
-metricsAddress: 127.0.0.1:9998
+metrics: no
 
 # WHIP server settings (WebRTC ingest)
 whip: yes
@@ -29,13 +28,12 @@ hlsPartDuration: 200ms
 
 # WebRTC settings
 webrtc: yes
-webrtcAddress: :8000
+webrtcAddress: :8890
 webrtcAllowOrigin: "*"
 webrtcICEServers:
-  - "stun:stun.l.google.com:19302"
+  - urls: ["stun:stun.l.google.com:19302"]
 
 # Path settings - Estados permitidos
 paths:
-  # Permitir todos os paths para estados
-  "~^.*$":
+  all:
     source: publisher
