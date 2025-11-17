@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  screenshare:
+    build:
+      context: .
+      dockerfile: Dockerfile.allinone
+    container_name: screenshare_all_in_one
+    ports:
+      - "8000:8000"    # API
+      - "8888:8888"    # HLS
+      - "8889:8889"    # WHIP
+      - "9997:9997"    # MediaMTX API
+      - "5432:5432"    # PostgreSQL (opcional)
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    environment:
+      # Database
+      DATABASE_URL: postgresql://screenshare:screenshare_secure_pass_123@localhost:5432/screenshare
+      DB_HOST: localhost
+      DB_PORT: 5432
+      DB_NAME: screenshare
+      DB_USER: screenshare
+      DB_PASSWORD: screenshare_secure_pass_123
+      
+      # Application
+      DEBUG: 'false'
+      SECRET_KEY: your-secret-key-change-in-production
+      
+      # JWT
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRATION_HOURS: 24
+      
+      # MediaMTX
+      MEDIAMTX_HOST: localhost
+      MEDIAMTX_HLS_PORT: 8888
+      MEDIAMTX_WHIP_PORT: 8889
+      
+      # Frontend
+      APP_HOST: localhost
+      APP_PORT: 8000
+      FRONTEND_ORIGINS: http://localhost:8080,http://localhost:3000
+      
+      # CORS
+      ALLOWED_ORIGINS: "*"
+    restart: unless-stopped
