@@ -37,4 +37,4 @@ class Config:
     # Estados permitidos (pode ser configurado via env)
     ALLOWED_STATES = os.getenv('ALLOWED_STATES', 'SP,RJ,MG,PR,SC,RS,BA,PE,CE,GO').split(',')
     # Frontend origin(s) allowed for CORS (comma-separated)
-    FRONTEND_ORIGINS = os.getenv('FRONTEND_ORIGINS', 'http://localhost:5173').split(',')
+    FRONTEND_ORIGINS = os.getenv('FRONTEND_ORIGINS', 'https://beautiful-backend-booster.vercel.app,http://localhost:5173').split(',')

@@ -40,7 +40,7 @@ services:
       # Frontend
       APP_HOST: localhost
       APP_PORT: 8000
-      FRONTEND_ORIGINS: http://localhost:8080,http://localhost:3000
+      FRONTEND_ORIGINS: https://beautiful-backend-booster.vercel.app,http://localhost:8080,http://localhost:3000
       
       # CORS
       ALLOWED_ORIGINS: "*"

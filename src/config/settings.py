@@ -14,6 +14,9 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'sua_chave_secreta_super_segura_aqui')
     DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
     
+    # Frontend CORS Origins
+    FRONTEND_ORIGINS = os.getenv('FRONTEND_ORIGINS', 'https://beautiful-backend-booster.vercel.app,http://localhost:8080').split(',')
+    
     # Banco de Dados PostgreSQL
     DB_HOST = os.getenv('DB_HOST', 'localhost')
     DB_NAME = os.getenv('DB_NAME', 'screenshare')
