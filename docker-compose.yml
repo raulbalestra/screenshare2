@@ -4,7 +4,7 @@ services:
   screenshare:
     build:
       context: .
-      dockerfile: Dockerfile.allinone
+      dockerfile: Dockerfile
     container_name: screenshare_all_in_one
     ports:
       - "8000:8000"    # API

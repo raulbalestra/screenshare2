@@ -21,30 +21,30 @@ if "%MODE%"=="" set MODE=start
 
 if "%MODE%"=="start" (
     echo 🚀 Iniciando ScreenShare All-In-One...
-    docker-compose -f docker-compose.allinone.yml up -d
+    docker compose up -d
     echo ✅ Container iniciado!
     
 ) else if "%MODE%"=="stop" (
     echo ⏹️  Parando ScreenShare...
-    docker-compose -f docker-compose.allinone.yml down
+    docker compose down
     echo ✅ Container parado!
     
 ) else if "%MODE%"=="build" (
     echo 🔨 Fazendo build da imagem...
-    docker-compose -f docker-compose.allinone.yml build --no-cache
+    docker compose build --no-cache
     echo ✅ Build concluído!
     
 ) else if "%MODE%"=="logs" (
     echo 📋 Mostrando logs...
-    docker-compose -f docker-compose.allinone.yml logs -f
+    docker compose logs -f
     
 ) else if "%MODE%"=="shell" (
     echo 🔧 Abrindo shell do container...
-    docker-compose -f docker-compose.allinone.yml exec screenshare bash
+    docker compose exec screenshare bash
     
 ) else if "%MODE%"=="restart" (
     echo 🔄 Reiniciando...
-    docker-compose -f docker-compose.allinone.yml restart
+    docker compose restart
     echo ✅ Container reiniciado!
     
 ) else (

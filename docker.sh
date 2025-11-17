@@ -18,30 +18,30 @@ MODE=${1:-start}
 
 if [ "$MODE" = "start" ]; then
     echo "🚀 Iniciando ScreenShare..."
-    docker-compose up -d
+    docker compose up -d
     echo "✅ Container iniciado!"
     
 elif [ "$MODE" = "stop" ]; then
     echo "⏹️  Parando ScreenShare..."
-    docker-compose down
+    docker compose down
     echo "✅ Container parado!"
     
 elif [ "$MODE" = "build" ]; then
     echo "🔨 Fazendo build da imagem..."
-    docker-compose build --no-cache
+    docker compose build --no-cache
     echo "✅ Build concluído!"
     
 elif [ "$MODE" = "logs" ]; then
     echo "📋 Mostrando logs..."
-    docker-compose logs -f
+    docker compose logs -f
     
 elif [ "$MODE" = "shell" ]; then
     echo "🔧 Abrindo shell do container..."
-    docker-compose exec screenshare bash
+    docker compose exec screenshare bash
     
 elif [ "$MODE" = "restart" ]; then
     echo "🔄 Reiniciando..."
-    docker-compose restart
+    docker compose restart
     echo "✅ Container reiniciado!"
     
 else
