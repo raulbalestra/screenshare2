@@ -61,10 +61,10 @@ COPY config/mediamtx.yml /etc/mediamtx/mediamtx.yml
 # ===== SETUP Nginx com SSL =====
 RUN mkdir -p /etc/nginx/ssl /etc/nginx/conf.d
 COPY config/nginx.conf /etc/nginx/conf.d/default.conf
-COPY config/ssl/cert.pem /etc/nginx/ssl/cert.pem
-COPY config/ssl/key.pem /etc/nginx/ssl/key.pem
-RUN chmod 644 /etc/nginx/ssl/cert.pem && \
-    chmod 600 /etc/nginx/ssl/key.pem
+COPY config/ssl/cert.pem /etc/nginx/ssl/fullchain.pem
+COPY config/ssl/key.pem /etc/nginx/ssl/privkey.pem
+RUN chmod 644 /etc/nginx/ssl/fullchain.pem && \
+    chmod 600 /etc/nginx/ssl/privkey.pem
 
 # ===== SETUP Supervisor para gerenciar processos =====
 RUN mkdir -p /var/log/supervisor
