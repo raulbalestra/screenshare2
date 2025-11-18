@@ -9,6 +9,7 @@ from typing import Optional
 import uvicorn
 import uuid
 import sqlite3
+import os
 import qrcode
 import io
 import base64
@@ -109,10 +110,11 @@ async def create_session(request: CreateSessionRequest):
         # Gerar tokens JWT
         publish_token = jwt_handler.create_publish_token(session_id, request.state)
         
-        # URLs - MediaMTX WebRTC endpoint - usar apenas session_id como stream path
+        # URLs - Use public domain with Nginx proxy paths
         stream_path = session_id
-        publish_url = f"http://{Config.MEDIAMTX_HOST}:8889/{stream_path}/whip"
-        play_url = f"http://{Config.MEDIAMTX_HOST}:{Config.MEDIAMTX_HLS_PORT}/{stream_path}/index.m3u8"
+        base_url = os.getenv('PUBLIC_URL', 'https://screenshare.fun')
+        publish_url = f"{base_url}/webrtc/{stream_path}/whip"
+        play_url = f"{base_url}/hls/{stream_path}/index.m3u8"
         
         # Gerar QR Code
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
@@ -145,8 +147,10 @@ async def get_play_info(session_id: str):
         raise HTTPException(status_code=404, detail="Sessão não encontrada")
     
     play_token = jwt_handler.create_play_token(session_id, session['state'])
-    # Use apenas session_id como stream path para evitar problemas com caracteres especiais
-    play_url = f"http://{Config.MEDIAMTX_HOST}:{Config.MEDIAMTX_HLS_PORT}/{session_id}/index.m3u8"
+    # Use public domain with Nginx proxy path for HLS
+    # The Nginx reverse proxy at /hls/ forwards to MediaMTX at port 8888
+    base_url = os.getenv('PUBLIC_URL', 'https://screenshare.fun')
+    play_url = f"{base_url}/hls/{session_id}/index.m3u8"
     
     return {
         "session_id": session_id,
