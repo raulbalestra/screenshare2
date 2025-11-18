@@ -1,23 +1,14 @@
 # MediaMTX Configuration for ScreenShare HLS
-# Configuração simplificada e compatível
+# Minimal config compatible with v1.5.1
 
-# General settings
 logLevel: info
 logDestinations: [stdout]
 
-# API settings
+# API
 api: yes
 apiAddress: :9997
 
-# Metrics
-metrics: no
-
-# WHIP server settings (WebRTC ingest)
-whip: yes
-whipAddress: :8889
-whipAllowOrigin: "*"
-
-# HLS server settings (Low Latency HLS output)
+# HLS (Low Latency)
 hls: yes
 hlsAddress: :8888
 hlsAllowOrigin: "*"
@@ -26,13 +17,16 @@ hlsSegmentCount: 7
 hlsSegmentDuration: 1s
 hlsPartDuration: 200ms
 
-# WebRTC settings
+# WebRTC
 webrtc: yes
 webrtcAddress: :8890
 webrtcAllowOrigin: "*"
 webrtcICEServers: ["stun:stun.l.google.com:19302"]
 
-# Path settings - Estados permitidos
+# RTSP (for compatibility)
+rtspAddress: :8554
+
+# Paths
 paths:
   all:
     source: publisher

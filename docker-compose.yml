@@ -21,10 +21,10 @@ services:
       - "8889:8889"
       - "9997:9997"
     networks:
-      - evo-network
+      - evolution-net
     external_links:
       - evo-pg
 
 networks:
-  evo-network:
+  evolution-net:
     external: true
