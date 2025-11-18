@@ -74,6 +74,19 @@ async def startup_event():
     except Exception as e:
         print(f"❌ Erro na inicialização: {e}")
 
+# Diagnostic endpoint to check cookies
+@app.get("/api/debug/cookies")
+async def debug_cookies(request: Request):
+    """Debug endpoint to check received cookies"""
+    cookies = dict(request.cookies)
+    headers = dict(request.headers)
+    return {
+        "cookies": cookies,
+        "cookie_header": headers.get("cookie", "No cookie header"),
+        "access_token_present": "access_token" in cookies,
+        "refresh_token_present": Config.REFRESH_COOKIE_NAME in cookies
+    }
+
 # NOTE: The web frontend serves UI pages. Root template rendering removed.
 
 @app.post("/api/session/create")
@@ -234,9 +247,26 @@ async def api_login(credentials: dict):
         # Use secure=True and samesite='none' for cross-origin requests (Vercel -> VPS)
         secure_flag = True  # Always use secure in production
         # Set access token cookie (short-lived)
-        response.set_cookie(key='access_token', value=access_token, httponly=True, secure=secure_flag, samesite='none', path='/', max_age=Config.JWT_ACCESS_EXPIRE_HOURS * 3600)
+        # NOTE: Do NOT set domain parameter - let browser handle it
+        response.set_cookie(
+            key='access_token',
+            value=access_token,
+            httponly=True,
+            secure=secure_flag,
+            samesite='none',
+            path='/',
+            max_age=Config.JWT_ACCESS_EXPIRE_HOURS * 3600
+        )
         # Set refresh token cookie (long-lived)
-        response.set_cookie(key=Config.REFRESH_COOKIE_NAME, value=refresh_token, httponly=True, secure=secure_flag, samesite='none', path='/', max_age=Config.JWT_REFRESH_EXPIRE_DAYS * 24 * 3600)
+        response.set_cookie(
+            key=Config.REFRESH_COOKIE_NAME,
+            value=refresh_token,
+            httponly=True,
+            secure=secure_flag,
+            samesite='none',
+            path='/',
+            max_age=Config.JWT_REFRESH_EXPIRE_DAYS * 24 * 3600
+        )
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -434,8 +464,24 @@ async def api_refresh(request: Request):
     # Set cookies (cross-origin compatible)
     secure_flag = True  # Always secure in production
     response = JSONResponse(content={'ok': True})
-    response.set_cookie(key='access_token', value=access_token, httponly=True, secure=secure_flag, samesite='none', path='/', max_age=Config.JWT_ACCESS_EXPIRE_HOURS * 3600)
-    response.set_cookie(key=Config.REFRESH_COOKIE_NAME, value=refresh_token_new, httponly=True, secure=secure_flag, samesite='none', path='/', max_age=Config.JWT_REFRESH_EXPIRE_DAYS * 24 * 3600)
+    response.set_cookie(
+        key='access_token',
+        value=access_token,
+        httponly=True,
+        secure=secure_flag,
+        samesite='none',
+        path='/',
+        max_age=Config.JWT_ACCESS_EXPIRE_HOURS * 3600
+    )
+    response.set_cookie(
+        key=Config.REFRESH_COOKIE_NAME,
+        value=refresh_token_new,
+        httponly=True,
+        secure=secure_flag,
+        samesite='none',
+        path='/',
+        max_age=Config.JWT_REFRESH_EXPIRE_DAYS * 24 * 3600
+    )
     return response
 
 @app.get("/api/districts/{uf}")
