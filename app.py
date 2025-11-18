@@ -116,9 +116,10 @@ async def create_session(request: CreateSessionRequest):
         publish_url = f"{base_url}/webrtc/{stream_path}/whip"
         play_url = f"{base_url}/hls/{stream_path}/index.m3u8"
         
-        # Gerar QR Code
+        # Gerar QR Code com URL do frontend
         qr = qrcode.QRCode(version=1, box_size=10, border=5)
-        qr.add_data(f"http://{Config.APP_HOST}:{Config.APP_PORT}/play/{session_id}")
+        frontend_url = os.getenv('FRONTEND_URL', 'https://beautiful-backend-booster.vercel.app')
+        qr.add_data(f"{frontend_url}/play/{session_id}")
         qr.make(fit=True)
         
         img = qr.make_image(fill_color="black", back_color="white")
