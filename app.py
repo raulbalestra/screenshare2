@@ -34,13 +34,16 @@ session_manager = SessionManager()
 # User manager (Postgres)
 user_manager = UserManager()
 
-# CORS - permitir o frontend React (durante desenvolvimento permitir local)
+# CORS - permitir o frontend React
+# IMPORTANT: Cannot use allow_origins=["*"] with allow_credentials=True
+# Must specify exact origins when using credentials
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if Config.DEBUG else Config.FRONTEND_ORIGINS,
+    allow_origins=Config.FRONTEND_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Modelos Pydantic
