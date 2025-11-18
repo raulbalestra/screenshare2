@@ -241,12 +241,17 @@ async def api_login(credentials: dict):
         except Exception as e:
             print('Warning: could not save refresh token in DB:', e)
 
-        # Build response with cookies
-        resp = {'user': {'id': user_id, 'username': username, 'email': user_email, 'localidade': localidade, 'is_admin': is_admin}}
+        # Build response with tokens in body (for cross-domain compatibility)
+        # Also set cookies for same-domain scenarios
+        resp = {
+            'user': {'id': user_id, 'username': username, 'email': user_email, 'localidade': localidade, 'is_admin': is_admin},
+            'access_token': access_token,
+            'refresh_token': refresh_token
+        }
         response = JSONResponse(content=resp)
         # Use secure=True and samesite='none' for cross-origin requests (Vercel -> VPS)
         secure_flag = True  # Always use secure in production
-        # Set access token cookie (short-lived)
+        # Set access token cookie (short-lived) - for same-domain compatibility
         # NOTE: Do NOT set domain parameter - let browser handle it
         response.set_cookie(
             key='access_token',
@@ -431,9 +436,18 @@ async def api_logout(request: Request):
 
 @app.post('/api/auth/refresh')
 async def api_refresh(request: Request):
-    """Refresh access token using httpOnly refresh cookie. Rotates refresh token on success."""
-    # Read refresh token from cookie
+    """Refresh access token. Accepts refresh token from cookie OR Authorization header. Rotates refresh token on success."""
+    # Try to read refresh token from cookie first, then from body
     refresh_token = request.cookies.get(Config.REFRESH_COOKIE_NAME)
+    
+    # If no cookie, try to read from request body
+    if not refresh_token:
+        try:
+            body = await request.json()
+            refresh_token = body.get('refresh_token')
+        except:
+            pass
+    
     if not refresh_token:
         raise HTTPException(status_code=401, detail='Missing refresh token')
 
@@ -461,9 +475,13 @@ async def api_refresh(request: Request):
     expires_at = datetime.utcnow() + timedelta(days=Config.JWT_REFRESH_EXPIRE_DAYS)
     UserManager.save_refresh_token(new_jti, user_id, expires_at)
 
-    # Set cookies (cross-origin compatible)
+    # Return tokens in body AND set cookies for compatibility
     secure_flag = True  # Always secure in production
-    response = JSONResponse(content={'ok': True})
+    response = JSONResponse(content={
+        'ok': True,
+        'access_token': access_token,
+        'refresh_token': refresh_token_new
+    })
     response.set_cookie(
         key='access_token',
         value=access_token,
