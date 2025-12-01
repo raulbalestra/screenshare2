@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sessões Ativas - Screen Share</title>
+    <link rel="icon" href="data:,">
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <style>
+        .session-active {
+            color: #28a745;
+        }
+        
+        .session-inactive {
+            color: #dc3545;
+        }
+        
+        .session-warning {
+            color: #ffc107;
+        }
+        
+        .refresh-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+        
+        .auto-refresh {
+            font-size: 0.8em;
+            color: #6c757d;
+        }
+        
+        .session-badge {
+            font-size: 0.75em;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    
+    <!-- Auto Refresh Indicator -->
+    <div class="refresh-indicator">
+        <div class="card shadow-sm">
+            <div class="card-body p-2">
+                <small class="auto-refresh">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Atualizando em <span id="countdown">30</span>s
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header / Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-activity"></i>
+                Sessões Ativas
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="{{ url_for('dashboard_admin') }}">
+                    <i class="bi bi-arrow-left"></i> Voltar ao Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        
+        <!-- Cards de Resumo -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h3 class="card-title" id="activeSessions">-</h3>
+                        <p class="card-text">Sessões Ativas</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body text-center">
+                        <h3 class="card-title" id="inactiveSessions">-</h3>
+                        <p class="card-text">Inativas (>5min)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body text-center">
+                        <h3 class="card-title" id="totalSessions">-</h3>
+                        <p class="card-text">Total de Sessões</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-secondary text-white">
+                    <div class="card-body text-center">
+                        <h3 class="card-title" id="uniqueIps">-</h3>
+                        <p class="card-text">IPs Únicos</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Sessões -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-list-ul"></i>
+                    Lista de Sessões Ativas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle" id="sessionsTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Status</th>
+                                <th>Usuário</th>
+                                <th>Localidade</th>
+                                <th>IP</th>
+                                <th>Navegador</th>
+                                <th>Início</th>
+                                <th>Última Atividade</th>
+                                <th>Tempo Inativo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Preenchido via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-5 text-center text-muted">
+            <p>&copy; 2025 Sistema de Monitoramento - Atualização automática a cada 30 segundos</p>
+        </div>
+
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="errorToast" class="toast" role="alert">
+            <div class="toast-header">
+                <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>
+                <strong class="me-auto">Erro</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="errorMessage">
+                Erro ao carregar dados
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let sessionsData = [];
+        let refreshInterval;
+        let countdownInterval;
+        let countdownValue = 30;
+
+        // Buscar dados das sessões
+        function fetchSessionsData() {
+            return fetch('/admin/api/active-sessions')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro ao buscar dados');
+                    }
+                    return response.json();
+                })
+                .catch(error => {
+                    showError('Erro ao carregar dados das sessões');
+                    throw error;
+                });
+        }
+
+        // Inicializar página
+        async function initSessions() {
+            try {
+                sessionsData = await fetchSessionsData();
+                updateSessions();
+            } catch (error) {
+                console.error('Erro ao inicializar:', error);
+            }
+        }
+
+        // Atualizar dados
+        function updateSessions() {
+            updateSummaryCards();
+            updateTable();
+        }
+
+        // Atualizar cards de resumo
+        function updateSummaryCards() {
+            const stats = calculateStats(sessionsData);
+            
+            document.getElementById('activeSessions').textContent = stats.active;
+            document.getElementById('inactiveSessions').textContent = stats.inactive;
+            document.getElementById('totalSessions').textContent = stats.total;
+            document.getElementById('uniqueIps').textContent = stats.uniqueIps;
+        }
+
+        // Calcular estatísticas
+        function calculateStats(data) {
+            const uniqueIps = new Set(data.map(s => s.ip_address)).size;
+            
+            return {
+                total: data.length,
+                active: data.filter(s => s.is_active).length,
+                inactive: data.filter(s => !s.is_active).length,
+                uniqueIps: uniqueIps
+            };
+        }
+
+        // Atualizar tabela
+        function updateTable() {
+            const tbody = document.querySelector('#sessionsTable tbody');
+            tbody.innerHTML = '';
+
+            if (sessionsData.length === 0) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td colspan="8" class="text-center text-muted">
+                        <i class="bi bi-inbox"></i>
+                        Nenhuma sessão ativa encontrada
+                    </td>
+                `;
+                tbody.appendChild(tr);
+                return;
+            }
+
+            sessionsData.forEach(session => {
+                const row = createTableRow(session);
+                tbody.appendChild(row);
+            });
+        }
+
+        // Criar linha da tabela
+        function createTableRow(session) {
+            const tr = document.createElement('tr');
+            
+            const statusBadge = session.is_active ? 
+                '<span class="badge bg-success session-badge">Ativa</span>' :
+                '<span class="badge bg-warning session-badge">Inativa</span>';
+
+            const lastActivity = formatDateTime(session.last_activity);
+            const createdAt = formatDateTime(session.created_at);
+            const inactiveTime = formatInactiveTime(session.minutes_inactive);
+            
+            tr.innerHTML = `
+                <td>${statusBadge}</td>
+                <td><strong>${session.username}</strong></td>
+                <td>${session.localidade}</td>
+                <td><code>${session.ip_address}</code></td>
+                <td><small>${session.user_agent}</small></td>
+                <td><small>${createdAt}</small></td>
+                <td><small>${lastActivity}</small></td>
+                <td class="${session.is_active ? 'session-active' : 'session-warning'}">${inactiveTime}</td>
+            `;
+            
+            return tr;
+        }
+
+        // Formatar data e hora
+        function formatDateTime(dateString) {
+            return new Date(dateString).toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        // Formatar tempo inativo
+        function formatInactiveTime(minutes) {
+            if (minutes < 1) return 'Agora';
+            if (minutes < 60) return `${Math.round(minutes)}min`;
+            return `${Math.round(minutes / 60)}h ${Math.round(minutes % 60)}min`;
+        }
+
+        // Mostrar erro
+        function showError(message) {
+            const toast = document.getElementById('errorToast');
+            const errorMessage = document.getElementById('errorMessage');
+            errorMessage.textContent = message;
+            
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+        }
+
+        // Auto refresh
+        function startAutoRefresh() {
+            refreshInterval = setInterval(async () => {
+                try {
+                    sessionsData = await fetchSessionsData();
+                    updateSessions();
+                } catch (error) {
+                    console.error('Erro no auto refresh:', error);
+                }
+                countdownValue = 30;
+            }, 30000);
+
+            countdownInterval = setInterval(() => {
+                countdownValue--;
+                document.getElementById('countdown').textContent = countdownValue;
+                if (countdownValue <= 0) {
+                    countdownValue = 30;
+                }
+            }, 1000);
+        }
+
+        // Inicializar quando página carregar
+        document.addEventListener('DOMContentLoaded', () => {
+            initSessions();
+            startAutoRefresh();
+        });
+
+        // Parar auto refresh ao sair da página
+        window.addEventListener('beforeunload', () => {
+            clearInterval(refreshInterval);
+            clearInterval(countdownInterval);
+        });
+    </script>
+</body>
+</html>

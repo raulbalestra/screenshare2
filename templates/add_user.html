@@ -100,7 +100,8 @@
       }
 
       input[type="text"],
-      input[type="password"] {
+      input[type="password"],
+      input[type="date"] {
         width: 100%;
         padding: 12px 40px 12px 15px;
         border: 1px solid #ccc;
@@ -110,7 +111,8 @@
       }
 
       input[type="text"]:focus,
-      input[type="password"]:focus {
+      input[type="password"]:focus,
+      input[type="date"]:focus {
         border-color: #4a90e2;
         box-shadow: 0 4px 12px rgba(74, 144, 226, 0.2);
         outline: none;
@@ -271,6 +273,28 @@
           <i class="fas fa-map-marker-alt"></i>
         </div>
 
+        <div class="input-group">
+          <label for="plan_start">Data de Início:</label>
+          <input
+            type="date"
+            id="plan_start"
+            name="plan_start"
+            required
+          />
+          <i class="fas fa-calendar-alt"></i>
+        </div>
+
+        <div class="input-group">
+          <label for="plan_end">Data de Expiração:</label>
+          <input
+            type="date"
+            id="plan_end"
+            name="plan_end"
+            required
+          />
+          <i class="fas fa-calendar-times"></i>
+        </div>
+
         <button type="submit">Adicionar Usuário</button>
       </form>
       <a href="{{ url_for('admin_dashboard') }}" class="back-link">Voltar para o Painel de Administração</a>
@@ -291,6 +315,38 @@
           icon.classList.add("fa-lock");
         }
       }
+
+      // Definir datas padrão
+      document.addEventListener('DOMContentLoaded', function() {
+        const today = new Date();
+        const planStart = document.getElementById('plan_start');
+        const planEnd = document.getElementById('plan_end');
+
+        // Data de início = hoje
+        planStart.value = today.toISOString().split('T')[0];
+
+        // Data de expiração = daqui a 30 dias
+        const thirtyDaysLater = new Date();
+        thirtyDaysLater.setDate(today.getDate() + 30);
+        planEnd.value = thirtyDaysLater.toISOString().split('T')[0];
+
+        // Validação de datas
+        function validateDates() {
+          if (planStart.value && planEnd.value) {
+            const startDate = new Date(planStart.value);
+            const endDate = new Date(planEnd.value);
+            
+            if (endDate <= startDate) {
+              planEnd.setCustomValidity('A data de expiração deve ser posterior à data de início');
+            } else {
+              planEnd.setCustomValidity('');
+            }
+          }
+        }
+
+        planStart.addEventListener('change', validateDates);
+        planEnd.addEventListener('change', validateDates);
+      });
     </script>
   </body>
 </html>

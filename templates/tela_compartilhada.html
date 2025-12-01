@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Compartilhar Tela</title>
+    <link rel="icon" href="data:,">
     <!-- Importando uma fonte moderna do Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- Importando o Font Awesome com o hash correto ou sem o atributo de integridade -->
@@ -190,27 +191,224 @@
         <h2>Compartilhar Tela para {{ localidade|capitalize }}</h2>
         <video id="screenVideo" autoplay muted></video>
         <div class="controls">
-            <button id="shareButton" onclick="startScreenShare()">Iniciar Compartilhamento</button>
+            <button id="hlsButton" onclick="startHLSStream()">Iniciar Compartilhamento</button>
             <button id="logoutButton" onclick="window.location.href='/logout'">Logout</button>
         </div>
     </div>
-
     <!-- Campo de link de compartilhamento fixo na parte inferior -->
     <div class="share-link-container">
         <input type="text" id="shareLink" readonly />
         <button class="copy-btn" onclick="copyLink()">Copiar</button>
     </div>
 
-    <script>
-        let screenStream;
-        let captureInterval;
-        const localidade = "{{ localidade }}"; // Pega a localidade da sessão
 
-        // Atualiza o link de compartilhamento dinamicamente usando window.location.origin
+
+    <script>
+        // ========================================
+        // NOVA ARQUITETURA HLS + MediaRecorder
+        // ========================================
+        
+        let screenStream;
+        let captureInterval;  // Para PNG (legado)
+        let mediaRecorder;    // Para HLS (novo)
+        let isHLSActive = false;
+        let isPNGActive = false;
+        const localidade = "{{ localidade }}";
+
+        // Link de compartilhamento tradicional (PNG)
         const shareLinkInput = document.getElementById("shareLink");
         shareLinkInput.value = `${window.location.origin}/${localidade}/tela`;
 
+        // ========================================
+        // STREAMING HLS (NOVA LÓGICA)
+        // ========================================
+        
+        async function startHLSStream() {
+            if (isHLSActive) {
+                alert("Stream HLS ABR já está ativo!");
+                return;
+            }
+
+            try {
+                console.log("[HLS] Iniciando stream HLS ABR...");
+                
+                // Captura tela com ALTA QUALIDADE para streaming
+                screenStream = await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        mediaSource: 'screen',
+                        width: { ideal: 1920, max: 2560 },    // Alta resolução
+                        height: { ideal: 1080, max: 1440 },   // Até 1440p
+                        frameRate: { ideal: 30, max: 60 },    // Até 60fps
+                        cursor: "always"
+                    },
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        sampleRate: 48000,     // Alta qualidade de áudio
+                        channelCount: 2        // Estéreo
+                    }
+                });
+
+                const videoElement = document.getElementById("screenVideo");
+                videoElement.srcObject = screenStream;
+                
+                // Configura MediaRecorder para ALTA QUALIDADE
+                const options = {
+                    mimeType: 'video/webm; codecs=vp9', // VP9 para melhor qualidade (era vp8)
+                    videoBitsPerSecond: 5000000, // 5 Mbps para ALTA qualidade (era 3 Mbps)
+                    audioBitsPerSecond: 192000   // 192 kbps áudio de alta qualidade (era 128)
+                };
+
+                // Fallback para formatos mais básicos se necessário
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    console.log("[HLS] VP9 não suportado, testando VP8 alta qualidade...");
+                    options.mimeType = 'video/webm; codecs=vp8';
+                    options.videoBitsPerSecond = 4000000; // 4 Mbps com VP8
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        console.log("[HLS] VP8 básico não suportado, usando WebM genérico...");
+                        options.mimeType = 'video/webm';
+                        options.videoBitsPerSecond = 3500000; // 3.5 Mbps para formato genérico
+                    }
+                }
+
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    throw new Error(`Formato ${options.mimeType} não suportado`);
+                }
+
+                console.log(`[HLS] Usando MediaRecorder: ${options.mimeType} @${options.videoBitsPerSecond/1000}kbps`);
+                mediaRecorder = new MediaRecorder(screenStream, options);
+                
+                // Buffer para acumular chunks antes de enviar
+                let chunkBuffer = [];
+                let chunkCount = 0;
+                
+                // Configura envio de chunks contínuos para o backend
+                mediaRecorder.ondataavailable = async (event) => {
+                    if (event.data.size > 0 && isHLSActive) {
+                        chunkBuffer.push(event.data);
+                        chunkCount++;
+                        
+                        console.log(`[HLS] Chunk contínuo ${chunkCount}: ${event.data.size} bytes`);
+                        
+                        // Envia imediatamente para streaming contínuo
+                        try {
+                            const blob = new Blob(chunkBuffer, { type: 'video/webm' });
+                            
+                            const response = await fetch(`/${localidade}/hls_ingest`, {
+                                method: 'POST',
+                                body: blob,
+                                headers: {
+                                    'Content-Type': 'video/webm',
+                                    'X-Chunk-Count': chunkCount.toString()
+                                }
+                            });
+                            
+                            if (response.ok) {
+                                console.log(`[HLS] Stream chunk enviado: ${blob.size} bytes`);
+                            } else {
+                                console.warn(`[HLS] Resposta HTTP ${response.status} para chunk ${chunkCount}`);
+                            }
+                            
+                            chunkBuffer = []; // Limpa buffer após envio
+                            
+                        } catch (error) {
+                            console.error('[HLS] Erro ao enviar stream chunk:', error);
+                            // Continue tentando, não para o streaming
+                        }
+                    }
+                };
+
+                // Reinicia automaticamente para streaming contínuo
+                mediaRecorder.onstop = () => {
+                    console.log('[HLS] MediaRecorder parado, reiniciando para continuidade...');
+                    if (isHLSActive && screenStream && screenStream.active) {
+                        setTimeout(() => {
+                            if (isHLSActive) {
+                                mediaRecorder.start(2000); // Recomeça com chunks de 2s
+                                console.log('[HLS] MediaRecorder reiniciado para streaming contínuo');
+                            }
+                        }, 100);
+                    }
+                };
+
+                mediaRecorder.onerror = (event) => {
+                    console.error("[HLS] Erro no MediaRecorder:", event.error);
+                    stopHLSStream();
+                };
+
+                mediaRecorder.onstart = () => {
+                    console.log("[HLS] MediaRecorder iniciado");
+                    isHLSActive = true;
+                    updateUI();
+                };
+
+                mediaRecorder.onstop = () => {
+                    console.log("[HLS] MediaRecorder parado");
+                    isHLSActive = false;
+                    updateUI();
+                };
+
+                // Inicia gravação com chunks menores para streaming contínuo
+                mediaRecorder.start(2000); // Chunk a cada 2 segundos para live streaming
+                
+                console.log("[HLS] Stream iniciado - enviando para FFmpeg em chunks de 5s");
+
+                // Listener para quando usuário parar via interface do navegador  
+                screenStream.getVideoTracks()[0].addEventListener("ended", () => {
+                    console.log("[HLS] Stream parado pelo usuário via navegador");
+                    stopHLSStream();
+                });
+                
+            } catch (error) {
+                console.error("[HLS] Erro ao iniciar stream:", error);
+                alert("Erro ao iniciar stream HLS: " + error.message);
+            }
+        }
+
+        async function stopHLSStream() {
+            if (!isHLSActive) return;
+
+            try {
+                console.log("[HLS] Parando stream HLS...");
+
+                isHLSActive = false;
+                
+                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                    mediaRecorder.stop();
+                }
+
+                if (screenStream) {
+                    screenStream.getTracks().forEach(track => track.stop());
+                    screenStream = null;
+                }
+
+                const videoElement = document.getElementById("screenVideo");
+                videoElement.srcObject = null;
+
+                // Notifica backend para parar FFmpeg
+                await fetch(`/${localidade}/hls_stop`, {
+                    method: 'POST'
+                });
+
+                updateUI();
+                
+                console.log("[HLS] Stream HLS parado com sucesso");
+                
+            } catch (error) {
+                console.error("[HLS] Erro ao parar stream:", error);
+            }
+        }
+
+        // ========================================
+        // COMPARTILHAMENTO PNG (LÓGICA ANTIGA)
+        // ========================================
+        
         async function startScreenShare() {
+            if (isPNGActive) {
+                alert("Compartilhamento PNG já está ativo!");
+                return;
+            }
+
             if (!localidade) {
                 alert("Localidade não especificada.");
                 return;
@@ -222,10 +420,10 @@
                 });
                 const videoElement = document.getElementById("screenVideo");
                 videoElement.srcObject = screenStream;
-                document.getElementById("shareButton").disabled = true;
+                isPNGActive = true;
+                updateUI();
                 captureAndSendFrames();
 
-                // Adiciona o listener para parar a transmissão quando o usuário clicar no botão de parar da interface do vídeo
                 screenStream.getVideoTracks()[0].addEventListener("ended", stopScreenShare);
             } catch (err) {
                 console.error("Erro ao compartilhar a tela: ", err);
@@ -239,17 +437,15 @@
             const context = canvas.getContext("2d");
 
             captureInterval = setInterval(() => {
-                if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+                if (!isPNGActive || videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
                     return;
                 }
 
                 canvas.width = videoElement.videoWidth;
                 canvas.height = videoElement.videoHeight;
 
-                // Desenha o frame atual do vídeo no canvas
                 context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
-                // Converte o conteúdo do canvas para um blob e envia para o servidor
                 canvas.toBlob((blob) => {
                     if (blob) {
                         const formData = new FormData();
@@ -261,7 +457,7 @@
                         })
                         .then((response) => {
                             if (!response.ok) {
-                                console.error("Erro ao enviar frame");
+                                console.error("Erro ao enviar frame PNG");
                             }
                         })
                         .catch((error) => {
@@ -269,19 +465,24 @@
                         });
                     }
                 }, "image/png");
-            },  1); // Captura a cada 1 segundo
+            }, 1000); // Captura a cada 1 segundo
         }
 
         function stopScreenShare() {
+            isPNGActive = false;
             clearInterval(captureInterval);
+            
             if (screenStream) {
                 let tracks = screenStream.getTracks();
                 tracks.forEach((track) => track.stop());
             }
+            
             const videoElement = document.getElementById("screenVideo");
             videoElement.srcObject = null;
-            document.getElementById("shareButton").disabled = false;
-            console.log("Compartilhamento de tela parado.");
+            
+            updateUI();
+            
+            // Limpa cache PNG
             fetch(`/${localidade}/clear_cache`, {
                 method: "POST",
             })
@@ -290,10 +491,39 @@
             .catch((error) => console.error("Erro ao limpar o cache:", error));
         }
 
+        // ========================================
+        // CONTROLES GERAIS
+        // ========================================
+        
+
+
+        function updateUI() {
+            const hlsButton = document.getElementById("hlsButton");
+            
+            // Verifica se elemento existe antes de usar
+            if (!hlsButton) {
+                console.warn('[UI] Botão HLS não encontrado');
+                return;
+            }
+            
+            // Desabilita botão quando stream está ativo
+            hlsButton.disabled = isHLSActive;
+            
+            if (isHLSActive) {
+                hlsButton.style.opacity = '0.5';
+                hlsButton.textContent = 'Transmitindo...';
+            } else {
+                hlsButton.style.opacity = '1';
+                hlsButton.textContent = 'Iniciar Compartilhamento';
+            }
+        }
+
+
+
         function copyLink() {
             const shareLink = document.getElementById("shareLink");
             shareLink.select();
-            shareLink.setSelectionRange(0, 99999); // Para dispositivos móveis
+            shareLink.setSelectionRange(0, 99999);
 
             navigator.clipboard.writeText(shareLink.value)
             .then(() => {
@@ -305,33 +535,22 @@
             });
         }
 
-        function startPing() {
-            return setInterval(() => {
-                if (!document.hasFocus()) {
-                    sendPing();
-                }
-            }, 0.5); // Intervalo aumentado para 2 minutos
-        }
 
-        let pingInterval = startPing();
 
-        window.addEventListener('focus', () => {
-            clearInterval(pingInterval);
-            console.log("A aba está em foco. Pings pausados.");
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            updateUI();
         });
 
-        window.addEventListener('blur', () => {
-            pingInterval = startPing();
-            console.log("A aba saiu de foco. Pings retomados.");
+        // Cleanup ao sair da página
+        window.addEventListener('beforeunload', () => {
+            if (isHLSActive) {
+                stopHLSStream();
+            }
+            if (isPNGActive) {
+                stopScreenShare();
+            }
         });
-
-        // Função para manter o navegador "ativo" durante o compartilhamento de tela
-        setInterval(() => {
-            document.title = "Compartilhando tela... " + new Date().getTime();
-            setTimeout(() => {
-                document.title = "Compartilhar Tela";
-            }, 500);
-        }, 10000); // Executa a cada 10 segundos
     </script>
 </body>
 </html>
