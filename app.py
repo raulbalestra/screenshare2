@@ -2606,7 +2606,8 @@ def internal_server_error(e):
     return render_template("500.html"), 500
 
 # Inicializar o banco de dados antes de servir qualquer rota
-create_database()
+# COMENTADO PARA PRODUÇÃO - evita problemas durante deploy no Render
+# create_database()
 
 # Inicializar diretório de sessões
 ensure_sessions_directory()
@@ -2615,6 +2616,9 @@ ensure_sessions_directory()
 if __name__ == "__main__":
     # Inicia a tarefa de limpeza de frames antigos
     start_cleanup_task(interval=300, max_age_in_seconds=300)
+    
+    # Para desenvolvimento local, descomentar se necessário:
+    # create_database()
     
     # Obter porta do ambiente ou usar 5000 como padrão
     port = int(os.environ.get('PORT', 5000))
