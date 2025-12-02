@@ -2610,8 +2610,77 @@ def internal_server_error(e):
 def setup_database_once():
     """Rota temporária para criar tabelas. Remover após uso."""
     try:
-        create_database()
-        return "<h1>✅ Database setup completed successfully!</h1><p>Tables created. You can now remove this route.</p>", 200
+        # Versão simplificada que não tenta adicionar colunas duplicadas
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Criar tabelas principais
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                localidade VARCHAR(100) NOT NULL,
+                is_admin BOOLEAN DEFAULT FALSE,
+                is_active BOOLEAN DEFAULT TRUE,
+                plan_start DATE DEFAULT CURRENT_DATE,
+                plan_end DATE
+            );
+        """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS usage_events (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                localidade VARCHAR(100) NOT NULL,
+                event_type TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+        """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS active_sessions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                session_id VARCHAR(255) UNIQUE NOT NULL,
+                ip_address INET,
+                user_agent TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                last_activity TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+        """)
+        
+        # Inserir usuários padrão se não existirem
+        cursor.execute("SELECT COUNT(*) FROM users")
+        user_count = cursor.fetchone()[0]
+        
+        if user_count == 0:
+            from werkzeug.security import generate_password_hash
+            cursor.execute("""
+                INSERT INTO users (username, password, localidade, is_admin, is_active)
+                VALUES 
+                ('admin', %s, 'admin', TRUE, TRUE),
+                ('curitiba_user', %s, 'curitiba', FALSE, TRUE),
+                ('sp_user', %s, 'sp', FALSE, TRUE)
+            """, (
+                generate_password_hash("admin"),
+                generate_password_hash("senha_curitiba"),
+                generate_password_hash("senha_sp")
+            ))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return f"""
+        <h1>✅ Database setup completed successfully!</h1>
+        <p>Tables created: users, usage_events, active_sessions</p>
+        <p>Default users created: admin, curitiba_user, sp_user</p>
+        <p><strong>You can now remove this route and use the application!</strong></p>
+        <hr>
+        <p><a href="/">Go to main page</a></p>
+        """, 200
+        
     except Exception as e:
         return f"<h1>❌ Database setup failed</h1><p>Error: {str(e)}</p>", 500
 
