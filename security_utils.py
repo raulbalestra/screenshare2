@@ -6,7 +6,6 @@ Contém funções para validação de entrada e proteção contra ataques comuns
 import os
 import re
 import html
-import bleach
 import hmac
 import hashlib
 import logging
@@ -196,8 +195,8 @@ class SecurityValidator:
         # Escapar HTML
         input_string = html.escape(input_string)
         
-        # Usar bleach para limpeza adicional (preservando espaços)
-        input_string = bleach.clean(input_string, tags=[], attributes={}, strip=True)
+        # Remover caracteres perigosos adicionais
+        input_string = re.sub(r'[<>"\']', '', input_string)
         
         return input_string.strip()
     
