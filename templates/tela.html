@@ -115,7 +115,20 @@
             if (!localidade) return;
 
             const imageUrl = baseImageUrl + localidade + "/screen.png?random=" + new Date().getTime();
-            screenImage.src = imageUrl; 
+            
+            // Criar uma nova imagem para verificar se carrega corretamente
+            const testImg = new Image();
+            testImg.onload = function() {
+                screenImage.src = imageUrl;
+            };
+            testImg.onerror = function() {
+                console.warn("[Frontend] Erro ao carregar frame, tentando novamente em 2s...");
+                // Retry após 2 segundos em caso de erro
+                setTimeout(() => {
+                    screenImage.src = imageUrl;
+                }, 2000);
+            };
+            testImg.src = imageUrl;
         }
 
         function startUpdatingScreen() {

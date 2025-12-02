@@ -1359,6 +1359,7 @@ def upload_frame(localidade):
         # Define o diretório de salvamento da imagem
         local_dir = ensure_localidade_directory(localidade)
         frame_path_local = os.path.join(local_dir, "screen.png")
+        frame_temp_path = os.path.join(local_dir, "screen_temp.png")
         
         if "frame" in request.files:
             frame = request.files["frame"]
@@ -1369,7 +1370,15 @@ def upload_frame(localidade):
                 abort(400, description="Arquivo de imagem inválido")
             
             try:
-                frame.save(frame_path_local)
+                # Salva primeiro em arquivo temporário
+                frame.save(frame_temp_path)
+                
+                # Renomeiação atômica (evita problemas de leitura durante escrita)
+                if os.path.exists(frame_temp_path):
+                    if os.path.exists(frame_path_local):
+                        os.remove(frame_path_local)
+                    os.rename(frame_temp_path, frame_path_local)
+                
                 last_upload_time[localidade] = current_time  # Atualiza o tempo do último upload
                 
                 # NOVO: Registrar evento de uso do frame
@@ -1380,6 +1389,12 @@ def upload_frame(localidade):
                 logger.info(f"Frame salvo com sucesso para {localidade} por {username}")
                 print(f"Frame salvo com sucesso em {frame_path_local}.")
             except Exception as e:
+                # Limpar arquivo temporário em caso de erro
+                if os.path.exists(frame_temp_path):
+                    try:
+                        os.remove(frame_temp_path)
+                    except:
+                        pass
                 logger.error(f"Erro ao salvar frame para {localidade}: {e}")
                 print(f"Erro ao salvar o frame: {e}")
                 return "", 500
@@ -1418,12 +1433,22 @@ def serve_pil_image(localidade):
         abort(404, description="Imagem não encontrada.")
 
     try:
+        # Verificar tamanho do arquivo para detectar arquivos corrompidos/incompletos
+        file_size = os.path.getsize(image_path)
+        if file_size < 100:  # Arquivo muito pequeno, provavelmente corrompido
+            print(f"Arquivo muito pequeno ou corrompido: {file_size} bytes")
+            abort(404, description="Imagem não disponível no momento.")
+            
         response = send_from_directory(local_dir, "screen.png", mimetype="image/png")
-        response.headers["Cache-Control"] = (
-            "no-cache, no-store, must-revalidate, max-age=0"
-        )
+        
+        # Headers otimizados para evitar problemas de cache e concorrência
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+        response.headers["Last-Modified"] = "0"
+        response.headers["ETag"] = f"\"{file_size}-{int(time.time())}\""
+        response.headers["Accept-Ranges"] = "none"  # Previne requests de range que podem causar problemas
+        
         return response
     except Exception as e:
         logger.error(f"Erro ao servir a imagem: {e}")
@@ -2412,15 +2437,27 @@ def change_password():
 def clear_cache(localidade):
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
     frame_path_local = os.path.join(local_dir, "screen.png")
+    frame_temp_path = os.path.join(local_dir, "screen_temp.png")
     print(f"[clear_cache] Recebida requisição para limpar cache da localidade: {localidade}")
     print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
+    
+    files_removed = []
     try:
+        # Remove arquivo principal
         if os.path.exists(frame_path_local):
             os.remove(frame_path_local)
-            print("[clear_cache] Arquivo deletado com sucesso.")
-            return jsonify({"message": "Cache limpo com sucesso."}), 200
+            files_removed.append("screen.png")
+            
+        # Remove arquivo temporário se existir
+        if os.path.exists(frame_temp_path):
+            os.remove(frame_temp_path)
+            files_removed.append("screen_temp.png")
+            
+        if files_removed:
+            print(f"[clear_cache] Arquivos deletados com sucesso: {', '.join(files_removed)}")
+            return jsonify({"message": f"Cache limpo com sucesso. Arquivos removidos: {', '.join(files_removed)}"}), 200
         else:
-            print("[clear_cache] Arquivo não encontrado.")
+            print("[clear_cache] Nenhum arquivo encontrado.")
             return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
     except Exception as e:
         print(f"[clear_cache] Erro ao deletar o arquivo: {e}")
