@@ -164,6 +164,7 @@ def add_security_headers(response):
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+        "worker-src 'self' blob:; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
         "img-src 'self' data: blob: https:; "
@@ -173,7 +174,7 @@ def add_security_headers(response):
     
     # Headers adicionais
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=(), usb=(), payment=()'
     
     return response
 
@@ -934,26 +935,33 @@ def start_hls_ffmpeg(localidade):
     
     output_path = os.path.join(localidade_dir, "index.m3u8")
     
-    # FFmpeg ESTÁVEL - configuração mínima para funcionar
+    # FFmpeg OTIMIZADO para MOBILE/NAVEGADOR - ESTABILIDADE
     ffmpeg_cmd = [
         "ffmpeg",
         "-y",  # Sobrescrever arquivos existentes
         "-f", "webm",  # Input format do MediaRecorder
         "-i", "pipe:0",  # Lê do stdin
         "-c:v", "libx264",  # Codec de vídeo H.264
-        "-preset", "veryfast",  # Preset rápido mas estável
-        "-tune", "zerolatency",  # Baixa latência
+        "-preset", "veryfast",  # Balance velocidade/qualidade
+        "-tune", "zerolatency",  # Zero latência
         "-pix_fmt", "yuv420p",  # Formato compatível
-        "-g", "30",  # Keyframes a cada 30 frames
-        "-b:v", "1500k",  # Bitrate fixo para estabilidade
-        "-maxrate", "2000k",  # Rate máximo
-        "-bufsize", "3000k",  # Buffer
+        "-g", "30",  # Keyframes a cada 2s (mobile friendly)
+        "-sc_threshold", "0",  # Força keyframes regulares
+        "-b:v", "800k",  # Bitrate fixo 800k (mobile)
+        "-maxrate", "1000k",  # Rate máximo
+        "-bufsize", "2000k",  # Buffer maior para estabilidade
+        "-threads", "4",  # 4 threads (não sobrecarrega)
+        "-profile:v", "baseline",  # Perfil compatível
+        "-level", "3.1",  # Level mobile
+        "-movflags", "+faststart",  # Start rápido
         "-an",  # SEM ÁUDIO
         "-f", "hls",  # Output HLS
-        "-hls_time", "3",  # Segmentos de 3 segundos
-        "-hls_list_size", "5",  # Mantém apenas 5 segmentos
-        "-hls_flags", "delete_segments",  # Remove segmentos antigos
-        "-hls_segment_filename", os.path.join(localidade_dir, "seg_%03d.ts"),
+        "-hls_time", "2",  # Segmentos 2s (mobile estável)
+        "-hls_list_size", "6",  # 6 segmentos (12s buffer)
+        "-hls_flags", "delete_segments+independent_segments",
+        "-hls_allow_cache", "0",
+        "-hls_start_number_source", "epoch",
+        "-hls_segment_filename", os.path.join(localidade_dir, "live_%d.ts"),
         output_path
     ]
     
@@ -975,8 +983,8 @@ def start_hls_ffmpeg(localidade):
         active_hls_processes[localidade] = process
         print(f"[HLS] Processo FFmpeg iniciado para {localidade} (PID: {process.pid})")
         
-        # Verifica se processo iniciou corretamente
-        time.sleep(0.5)
+        # Verifica se processo iniciou corretamente (mais tempo para alta qualidade)
+        time.sleep(1.5)
         if process.poll() is not None:
             print(f"[HLS] ERRO: FFmpeg terminou imediatamente com código {process.returncode}")
             return None
@@ -1332,7 +1340,7 @@ def upload_frame(localidade):
         abort(429, description="Muitas tentativas. Tente novamente mais tarde.")
     
     # Define intervalo mínimo de tempo em segundos entre uploads
-    upload_interval = 2  # Ajuste o intervalo conforme necessário (ex.: 2 segundos)
+    upload_interval = 1  # Ajuste o intervalo conforme necessário (ex.: 1 segundo)
 
     if "logged_in" in session and session.get("localidade") == localidade:
         # Verificação adicional de CSRF token
@@ -1451,14 +1459,30 @@ def share_screen(localidade):
         )
         username = session.get("username")
         
+        # Gerar token CSRF se não existir
+        if 'csrf_token' not in session:
+            session['csrf_token'] = generate_csrf_token()
+        
         logger.info(f"Tela compartilhada para {localidade} por {username}")
         
-        return render_template(
+        # Criar response com headers de segurança explícitos
+        response = app.make_response(render_template(
             "tela_compartilhada.html",
             localidade=localidade,
             share_link=share_link,
             username=username,
-        )
+            csrf_token=session['csrf_token'],
+        ))
+        
+        # Headers específicos para bloquear câmera e microfone - FORÇAR SOBRESCRITA
+        response.headers.pop('Content-Security-Policy', None)  # Remove CSP global
+        response.headers.pop('Permissions-Policy', None)       # Remove Permissions global
+        
+        response.headers['Permissions-Policy'] = 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), display-capture=*'
+        response.headers['Feature-Policy'] = 'camera \'none\'; microphone \'none\'; geolocation \'none\'; display-capture *'
+        response.headers['Content-Security-Policy'] = 'default-src \'self\' \'unsafe-inline\' \'unsafe-eval\' https:; script-src \'self\' \'unsafe-inline\' \'unsafe-eval\' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; worker-src \'self\' blob:; style-src \'self\' \'unsafe-inline\' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src \'self\' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src \'self\' data: https:; media-src \'self\' blob: data:; connect-src \'self\' ws: wss:;'
+        
+        return response
     else:
         logger.warning(f"Acesso não autorizado para compartilhamento - localidade: {localidade}, IP: {request.remote_addr}")
         flash("Acesso não autorizado.", "error")
@@ -1507,8 +1531,8 @@ def hls_ingest(localidade):
             process = start_hls_ffmpeg(localidade)
             if not process:
                 return "Erro ao iniciar streaming", 500
-            # Aguarda FFmpeg inicializar
-            time.sleep(1)
+            # Aguarda FFmpeg inicializar (mais tempo para alta qualidade)
+            time.sleep(3)
         
         try:
             # Lê todos os dados do chunk
@@ -1527,7 +1551,7 @@ def hls_ingest(localidade):
                 process = start_hls_ffmpeg(localidade)
                 if not process:
                     return jsonify({"error": "Não foi possível reiniciar FFmpeg"}), 500
-                time.sleep(0.5)  # Aguarda inicializar
+                time.sleep(2)  # Aguarda mais tempo para alta qualidade inicializar
                 
             # Verifica se stdin ainda está disponível
             if process.stdin and not process.stdin.closed:

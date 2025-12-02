@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=()" />
-    <meta http-equiv="Feature-Policy" content="camera 'none'; microphone 'none'; geolocation 'none'" />
     <title>Compartilhar Tela</title>
-    <link rel="icon" href="data:,">
     <!-- Importando uma fonte moderna do Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- Importando o Font Awesome com o hash correto ou sem o atributo de integridade -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         /* Reset básico */
         * {
@@ -75,109 +72,36 @@
         }
 
         /* Botão Iniciar Compartilhamento */
-        #hlsButton {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 16px 32px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        #shareButton {
+            padding: 14px 28px;
+            background-color: #28a745;
             color: white;
-            font-size: 1.1rem;
-            font-weight: 600;
-            letter-spacing: 0.5px;
+            font-size: 1em;
             border: none;
             border-radius: 50px;
             cursor: pointer;
-            min-width: 220px;
-            box-shadow: 
-                0 8px 32px rgba(102, 126, 234, 0.4),
-                0 4px 16px rgba(118, 75, 162, 0.3);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            position: relative;
-            overflow: hidden;
-            animation: pulse-glow 3s ease-in-out infinite;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
 
-        #hlsButton::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s ease;
-        }
-
-        #hlsButton:hover::before {
-            left: 100%;
-        }
-
-        #hlsButton:hover {
-            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 
-                0 12px 40px rgba(102, 126, 234, 0.6),
-                0 8px 24px rgba(118, 75, 162, 0.4),
-                0 0 0 3px rgba(102, 126, 234, 0.1);
-            animation: none;
-        }
-
-        #hlsButton:active {
-            transform: translateY(-1px) scale(1.01);
-            box-shadow: 
-                0 6px 20px rgba(102, 126, 234, 0.4),
-                0 4px 12px rgba(118, 75, 162, 0.3);
-        }
-
-        #hlsButton:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-            animation: none;
-        }
-
-        @keyframes pulse-glow {
-            0%, 100% { 
-                box-shadow: 
-                    0 8px 32px rgba(102, 126, 234, 0.4),
-                    0 4px 16px rgba(118, 75, 162, 0.3);
-            }
-            50% { 
-                box-shadow: 
-                    0 8px 32px rgba(102, 126, 234, 0.6),
-                    0 4px 16px rgba(118, 75, 162, 0.5);
-            }
+        #shareButton:hover {
+            background-color: #218838;
+            transform: translateY(-3px);
         }
 
         /* Botão Logout */
         #logoutButton {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
             padding: 14px 28px;
-            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+            background-color: #6c757d;
             color: white;
-            font-size: 1rem;
-            font-weight: 500;
             border: none;
             border-radius: 50px;
             cursor: pointer;
-            min-width: 140px;
-            box-shadow: 0 4px 16px rgba(108, 117, 125, 0.3);
-            transition: all 0.3s ease;
+            transition: background-color 0.3s ease, transform 0.2s ease;
         }
 
         #logoutButton:hover {
-            background: linear-gradient(135deg, #5a6268 0%, #343a40 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
-        }
-
-        #logoutButton:active {
-            transform: translateY(-1px);
+            background-color: #5a6268;
+            transform: translateY(-3px);
         }
 
         /* Campo de link de compartilhamento fixo na parte inferior */
@@ -237,18 +161,6 @@
                 gap: 10px;
             }
 
-            #hlsButton {
-                padding: 14px 24px;
-                font-size: 1rem;
-                min-width: 200px;
-            }
-
-            #logoutButton {
-                padding: 12px 20px;
-                font-size: 0.95rem;
-                min-width: 120px;
-            }
-
             .share-link-container {
                 flex-direction: column;
                 gap: 10px;
@@ -266,24 +178,6 @@
             }
         }
 
-        @media (max-width: 480px) {
-            .container {
-                padding: 30px 20px;
-            }
-
-            #hlsButton {
-                padding: 12px 20px;
-                font-size: 0.95rem;
-                min-width: 180px;
-            }
-
-            #logoutButton {
-                padding: 10px 16px;
-                font-size: 0.9rem;
-                min-width: 100px;
-            }
-        }
-
         /* Animações suaves */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
@@ -296,239 +190,27 @@
         <h2>Compartilhar Tela para {{ localidade|capitalize }}</h2>
         <video id="screenVideo" autoplay muted></video>
         <div class="controls">
-            <button id="hlsButton" onclick="startHLSStream()">
-                <i class="fas fa-broadcast-tower"></i>
-                Iniciar Transmissão
-            </button>
-            <button id="logoutButton" onclick="window.location.href='/logout'">
-                <i class="fas fa-sign-out-alt"></i>
-                Logout
-            </button>
+            <button id="shareButton" onclick="startScreenShare()">Iniciar Compartilhamento</button>
+            <button id="logoutButton" onclick="window.location.href='/logout'">Logout</button>
         </div>
     </div>
+
     <!-- Campo de link de compartilhamento fixo na parte inferior -->
     <div class="share-link-container">
         <input type="text" id="shareLink" readonly />
         <button class="copy-btn" onclick="copyLink()">Copiar</button>
     </div>
 
-
-
     <script>
-        // ========================================
-        // NOVA ARQUITETURA HLS + MediaRecorder
-        // ========================================
-        
         let screenStream;
-        let captureInterval;  // Para PNG (legado)
-        let mediaRecorder;    // Para HLS (novo)
-        let isHLSActive = false;
-        let isPNGActive = false;
-        const localidade = "{{ localidade }}";
+        let captureInterval;
+        const localidade = "{{ localidade }}"; // Pega a localidade da sessão
 
-        // Link de compartilhamento tradicional (PNG)
+        // Atualiza o link de compartilhamento dinamicamente usando window.location.origin
         const shareLinkInput = document.getElementById("shareLink");
         shareLinkInput.value = `${window.location.origin}/${localidade}/tela`;
 
-        // ========================================
-        // STREAMING HLS (NOVA LÓGICA)
-        // ========================================
-        
-        async function startHLSStream() {
-            if (isHLSActive) {
-                alert("Stream HLS ABR já está ativo!");
-                return;
-            }
-
-            try {
-                console.log("[HLS] Iniciando stream HLS ABR...");
-                
-                // Captura APENAS TELA (sem qualquer áudio ou câmera)
-                screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        width: { ideal: 1280, max: 1920 },
-                        height: { ideal: 720, max: 1080 },
-                        frameRate: { ideal: 15, max: 30 }
-                    },
-                    audio: false  // NUNCA solicitar áudio
-                });
-
-                const videoElement = document.getElementById("screenVideo");
-                videoElement.srcObject = screenStream;
-                
-                // MediaRecorder SIMPLES - apenas vídeo
-                const options = {
-                    mimeType: 'video/webm; codecs=vp8', // VP8 mais compatível
-                    videoBitsPerSecond: 2000000 // 2 Mbps para estabilidade
-                };
-
-                // Fallback simples
-                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    console.log("[HLS] Tentando WebM genérico...");
-                    options.mimeType = 'video/webm';
-                    options.videoBitsPerSecond = 1500000;
-                }
-
-                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    throw new Error(`Formato ${options.mimeType} não suportado`);
-                }
-
-                console.log(`[HLS] Usando MediaRecorder: ${options.mimeType} @${options.videoBitsPerSecond/1000}kbps`);
-                mediaRecorder = new MediaRecorder(screenStream, options);
-                
-                // Buffer para acumular chunks antes de enviar
-                let chunkBuffer = [];
-                let chunkCount = 0;
-                let errorCount = 0;
-                const maxErrors = 3;
-                
-                // Configura envio de chunks contínuos para o backend
-                mediaRecorder.ondataavailable = async (event) => {
-                    if (event.data.size > 0 && isHLSActive) {
-                        chunkBuffer.push(event.data);
-                        chunkCount++;
-                        
-                        console.log(`[HLS] Chunk contínuo ${chunkCount}: ${event.data.size} bytes`);
-                        
-                        // Envia imediatamente para streaming contínuo
-                        try {
-                            const blob = new Blob(chunkBuffer, { type: 'video/webm' });
-                            
-                            const response = await fetch(`/${localidade}/hls_ingest`, {
-                                method: 'POST',
-                                body: blob,
-                                headers: {
-                                    'Content-Type': 'video/webm',
-                                    'X-Chunk-Count': chunkCount.toString()
-                                }
-                            });
-                            
-                            if (response.ok) {
-                                console.log(`[HLS] Stream chunk enviado: ${blob.size} bytes`);
-                                errorCount = 0; // Reset error counter on success
-                            } else if (response.status === 500) {
-                                console.error(`[HLS] ERRO 500 no servidor para chunk ${chunkCount}`);
-                                errorCount++;
-                                
-                                if (errorCount >= maxErrors) {
-                                    console.error(`[HLS] Muitos erros (${errorCount}), parando stream...`);
-                                    alert("Erro no servidor. FFmpeg pode não estar instalado ou disponível. Parando transmissão.");
-                                    stopHLSStream();
-                                    return;
-                                }
-                            } else {
-                                console.warn(`[HLS] Resposta HTTP ${response.status} para chunk ${chunkCount}`);
-                                errorCount++;
-                            }
-                            
-                            chunkBuffer = []; // Limpa buffer após envio
-                            
-                        } catch (error) {
-                            console.error('[HLS] Erro ao enviar stream chunk:', error);
-                            errorCount++;
-                            
-                            if (errorCount >= maxErrors) {
-                                console.error(`[HLS] Muitos erros de conexão (${errorCount}), parando stream...`);
-                                alert("Problemas de conexão detectados. Parando transmissão.");
-                                stopHLSStream();
-                                return;
-                            }
-                            // Continue tentando, não para o streaming imediatamente
-                        }
-                    }
-                };
-
-                // Reinicia automaticamente para streaming contínuo
-                mediaRecorder.onstop = () => {
-                    console.log('[HLS] MediaRecorder parado, reiniciando para continuidade...');
-                    if (isHLSActive && screenStream && screenStream.active) {
-                        setTimeout(() => {
-                            if (isHLSActive) {
-                                mediaRecorder.start(2000); // Recomeça com chunks de 2s
-                                console.log('[HLS] MediaRecorder reiniciado para streaming contínuo');
-                            }
-                        }, 100);
-                    }
-                };
-
-                mediaRecorder.onerror = (event) => {
-                    console.error("[HLS] Erro no MediaRecorder:", event.error);
-                    stopHLSStream();
-                };
-
-                mediaRecorder.onstart = () => {
-                    console.log("[HLS] MediaRecorder iniciado");
-                    isHLSActive = true;
-                    updateUI();
-                };
-
-                mediaRecorder.onstop = () => {
-                    console.log("[HLS] MediaRecorder parado");
-                    isHLSActive = false;
-                    updateUI();
-                };
-
-                // Inicia gravação com chunks menores para streaming contínuo
-                mediaRecorder.start(2000); // Chunk a cada 2 segundos para live streaming
-                
-                console.log("[HLS] Stream iniciado - enviando para FFmpeg em chunks de 5s");
-
-                // Listener para quando usuário parar via interface do navegador  
-                screenStream.getVideoTracks()[0].addEventListener("ended", () => {
-                    console.log("[HLS] Stream parado pelo usuário via navegador");
-                    stopHLSStream();
-                });
-                
-            } catch (error) {
-                console.error("[HLS] Erro ao iniciar stream:", error);
-                alert("Erro ao iniciar stream HLS: " + error.message);
-            }
-        }
-
-        async function stopHLSStream() {
-            if (!isHLSActive) return;
-
-            try {
-                console.log("[HLS] Parando stream HLS...");
-
-                isHLSActive = false;
-                
-                if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                    mediaRecorder.stop();
-                }
-
-                if (screenStream) {
-                    screenStream.getTracks().forEach(track => track.stop());
-                    screenStream = null;
-                }
-
-                const videoElement = document.getElementById("screenVideo");
-                videoElement.srcObject = null;
-
-                // Notifica backend para parar FFmpeg
-                await fetch(`/${localidade}/hls_stop`, {
-                    method: 'POST'
-                });
-
-                updateUI();
-                
-                console.log("[HLS] Stream HLS parado com sucesso");
-                
-            } catch (error) {
-                console.error("[HLS] Erro ao parar stream:", error);
-            }
-        }
-
-        // ========================================
-        // COMPARTILHAMENTO PNG (LÓGICA ANTIGA)
-        // ========================================
-        
         async function startScreenShare() {
-            if (isPNGActive) {
-                alert("Compartilhamento PNG já está ativo!");
-                return;
-            }
-
             if (!localidade) {
                 alert("Localidade não especificada.");
                 return;
@@ -536,19 +218,14 @@
 
             try {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 },
-                        frameRate: { ideal: 15 }
-                    },
-                    audio: false  // NUNCA solicitar áudio
+                    video: true,
                 });
                 const videoElement = document.getElementById("screenVideo");
                 videoElement.srcObject = screenStream;
-                isPNGActive = true;
-                updateUI();
+                document.getElementById("shareButton").disabled = true;
                 captureAndSendFrames();
 
+                // Adiciona o listener para parar a transmissão quando o usuário clicar no botão de parar da interface do vídeo
                 screenStream.getVideoTracks()[0].addEventListener("ended", stopScreenShare);
             } catch (err) {
                 console.error("Erro ao compartilhar a tela: ", err);
@@ -562,19 +239,22 @@
             const context = canvas.getContext("2d");
 
             captureInterval = setInterval(() => {
-                if (!isPNGActive || videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
+                if (videoElement.videoWidth === 0 || videoElement.videoHeight === 0) {
                     return;
                 }
 
                 canvas.width = videoElement.videoWidth;
                 canvas.height = videoElement.videoHeight;
 
+                // Desenha o frame atual do vídeo no canvas
                 context.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
 
+                // Converte o conteúdo do canvas para um blob e envia para o servidor
                 canvas.toBlob((blob) => {
                     if (blob) {
                         const formData = new FormData();
                         formData.append("frame", blob, "screen.png");
+                        formData.append("csrf_token", "{{ csrf_token }}"); // Adicionar token CSRF
 
                         fetch(`/${localidade}/upload_frame`, {
                             method: "POST",
@@ -582,32 +262,29 @@
                         })
                         .then((response) => {
                             if (!response.ok) {
-                                console.error("Erro ao enviar frame PNG");
+                                console.error("Erro ao enviar frame", response.status);
+                            } else {
+                                console.log("Frame enviado com sucesso");
                             }
                         })
                         .catch((error) => {
                             console.error("Erro de conexão ao enviar frame:", error);
                         });
                     }
-                }, "image/png");
+                }, "image/png", 0.9); // Qualidade 90% em PNG
             }, 1000); // Captura a cada 1 segundo
         }
 
         function stopScreenShare() {
-            isPNGActive = false;
             clearInterval(captureInterval);
-            
             if (screenStream) {
                 let tracks = screenStream.getTracks();
                 tracks.forEach((track) => track.stop());
             }
-            
             const videoElement = document.getElementById("screenVideo");
             videoElement.srcObject = null;
-            
-            updateUI();
-            
-            // Limpa cache PNG
+            document.getElementById("shareButton").disabled = false;
+            console.log("Compartilhamento de tela parado.");
             fetch(`/${localidade}/clear_cache`, {
                 method: "POST",
             })
@@ -616,37 +293,10 @@
             .catch((error) => console.error("Erro ao limpar o cache:", error));
         }
 
-        // ========================================
-        // CONTROLES GERAIS
-        // ========================================
-        
-
-
-        function updateUI() {
-            const hlsButton = document.getElementById("hlsButton");
-            
-            // Verifica se elemento existe antes de usar
-            if (!hlsButton) {
-                console.warn('[UI] Botão HLS não encontrado');
-                return;
-            }
-            
-            // Desabilita botão quando stream está ativo
-            hlsButton.disabled = isHLSActive;
-            
-            if (isHLSActive) {
-                hlsButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transmitindo...';
-            } else {
-                hlsButton.innerHTML = '<i class="fas fa-broadcast-tower"></i> Iniciar Transmissão';
-            }
-        }
-
-
-
         function copyLink() {
             const shareLink = document.getElementById("shareLink");
             shareLink.select();
-            shareLink.setSelectionRange(0, 99999);
+            shareLink.setSelectionRange(0, 99999); // Para dispositivos móveis
 
             navigator.clipboard.writeText(shareLink.value)
             .then(() => {
@@ -658,22 +308,33 @@
             });
         }
 
+        function startPing() {
+            return setInterval(() => {
+                if (!document.hasFocus()) {
+                    sendPing();
+                }
+            }, 1000); // Captura a cada 1 segundo
+        }
 
+        let pingInterval = startPing();
 
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', () => {
-            updateUI();
+        window.addEventListener('focus', () => {
+            clearInterval(pingInterval);
+            console.log("A aba está em foco. Pings pausados.");
         });
 
-        // Cleanup ao sair da página
-        window.addEventListener('beforeunload', () => {
-            if (isHLSActive) {
-                stopHLSStream();
-            }
-            if (isPNGActive) {
-                stopScreenShare();
-            }
+        window.addEventListener('blur', () => {
+            pingInterval = startPing();
+            console.log("A aba saiu de foco. Pings retomados.");
         });
+
+        // Função para manter o navegador "ativo" durante o compartilhamento de tela
+        setInterval(() => {
+            document.title = "Compartilhando tela... " + new Date().getTime();
+            setTimeout(() => {
+                document.title = "Compartilhar Tela";
+            }, 500);
+        }, 10000); // Executa a cada 10 segundos
     </script>
 </body>
 </html>

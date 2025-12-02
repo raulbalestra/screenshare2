@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualização da Tela - {{ localidade|capitalize }}</title>
+    <title>Visualização da Tela</title>
     <!-- Importando uma fonte moderna do Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-    <!-- Importando Font Awesome para ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <!-- HLS.js para suporte HLS -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <!-- Importando Font Awesome para ícones (sem o atributo de integridade) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         /* Variáveis de Cores */
         :root {
@@ -51,568 +49,134 @@
             margin-bottom: 20px;
         }
 
-        /* Estilos para o vídeo HLS */
-        #hlsVideo {
+        /* Estilos para a imagem da tela */
+        #screen {
             width: 95vw;
             height: 95vh;
-            object-fit: contain;
-            background-color: #000;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            object-fit: contain; /* Cobre toda a área da tela sem distorção */
         }
+
 
         /* Responsividade */
         @media (max-width: 768px) {
-            #hlsVideo {
+            #screen {
                 height: 100vh;
-                width: 100vw;
-                border-radius: 0;
-            }
-            
-            .action-button {
-                padding: 14px 24px;
-                font-size: 1rem;
-                min-width: 180px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .action-button {
-                padding: 12px 20px;
-                font-size: 0.95rem;
-                min-width: 160px;
-                margin: 15px 10px;
-            }
-            
-            .info-box {
-                padding: 20px 15px;
-                margin: 15px 10px;
+                object-fit: contain; /* Ajusta a imagem dentro da tela sem cortar */
             }
         }
 
         /* Estilos para a mensagem de espera */
         #message {
             margin-top: 20px;
-            font-size: 1.2em;
+            font-size: 1.5em;
             color: #555;
-            text-align: center;
-            padding: 20px;
-            background-color: var(--background-color);
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        /* Status indicator */
-        .status-indicator {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-
-        .status-live {
-            background-color: #28a745;
-            animation: pulse 2s infinite;
-        }
-
-        .status-offline {
-            background-color: #dc3545;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-
-        /* Loading spinner */
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid var(--primary-color);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 10px;
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* Botão de ação */
-        .action-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            padding: 16px 32px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            text-decoration: none;
-            border-radius: 50px;
-            margin-top: 20px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            letter-spacing: 0.5px;
-            box-shadow: 
-                0 8px 32px rgba(102, 126, 234, 0.4),
-                0 4px 16px rgba(118, 75, 162, 0.3);
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            position: relative;
-            overflow: hidden;
-            border: 2px solid transparent;
-            background-clip: padding-box;
-            min-width: 200px;
-        }
-
-        .action-button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .action-button:hover::before {
-            left: 100%;
-        }
-
-        .action-button:hover {
-            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
-            text-decoration: none;
-            color: white;
-            transform: translateY(-3px) scale(1.02);
-            box-shadow: 
-                0 12px 40px rgba(102, 126, 234, 0.6),
-                0 8px 24px rgba(118, 75, 162, 0.4),
-                0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .action-button:active {
-            transform: translateY(-1px) scale(1.01);
-            box-shadow: 
-                0 6px 20px rgba(102, 126, 234, 0.4),
-                0 4px 12px rgba(118, 75, 162, 0.3);
-        }
-
-        .action-button .fas {
-            font-size: 1.2rem;
-            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-            transition: transform 0.3s ease;
-        }
-
-        .action-button:hover .fas {
-            transform: scale(1.1);
-        }
-
-        /* Efeito de pulso para chamar atenção */
-        .action-button {
-            animation: pulse-glow 3s ease-in-out infinite;
-        }
-
-        @keyframes pulse-glow {
-            0%, 100% { 
-                box-shadow: 
-                    0 8px 32px rgba(102, 126, 234, 0.4),
-                    0 4px 16px rgba(118, 75, 162, 0.3);
-            }
-            50% { 
-                box-shadow: 
-                    0 8px 32px rgba(102, 126, 234, 0.6),
-                    0 4px 16px rgba(118, 75, 162, 0.5);
-            }
-        }
-
-        .action-button:hover {
-            animation: none;
-        }
-
-        .info-box {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border: 1px solid #dee2e6;
-            border-radius: 10px;
-            padding: 25px;
-            margin: 20px 0;
-            text-align: center;
-            color: #212529;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .info-box .fas {
-            font-size: 2.5em;
-            color: #007bff;
-            margin-bottom: 15px;
-            display: block;
         }
 
     </style>
 </head>
 <body>
-    <h2>
-        <span id="statusIndicator" class="status-indicator status-offline"></span>
-        Painel de Filas - {{ localidade|capitalize }}
-    </h2>
-    
-    <video id="hlsVideo" controls autoplay muted style="display: none;">
-        Seu navegador não suporta o elemento de vídeo.
-    </video>
-    
-    <div id="message">
-        <span class="loading"></span>
-        Aguardando o início da transmissão HLS...
-    </div>
+    <h2>Painel de Filas - {{ localidade|capitalize }}</h2>
+    <img id="screen" src="" alt="Transmissão da Tela">
+    <div id="message">Aguardando o início da transmissão...</div>
 
     <script>
-        const localidade = "{{ localidade|default('') }}";
-        const sessionId = "{{ session_id|default('') }}";
-        const video = document.getElementById('hlsVideo');
+        const baseImageUrl = "/serve_pil_image/";
+        const localidade = "{{ localidade|default('') }}";  
+        const screenImage = document.getElementById('screen');
         const messageDiv = document.getElementById('message');
-        const statusIndicator = document.getElementById('statusIndicator');
-        
-        let hls;
-        let checkInterval;
-        let retryCount = 0;
-        const maxRetries = 3;
 
-        // Definir URLs globalmente
-        let hlsUrl;
-        let statusUrl;
+        let updateInterval;
+        let cleanupInterval;
 
-        if (sessionId) {
-            hlsUrl = `/hls/${sessionId}/index.m3u8`;
-            statusUrl = `/${sessionId}/hls_status`;
-        } else {
-            hlsUrl = `/hls/${localidade}/index.m3u8`;
-            statusUrl = `/${localidade}/hls_status`;
-        }
+        function checkForTransmission() {
+            if (!localidade) {
+                messageDiv.textContent = "Localidade não especificada.";
+                return;
+            }
 
-        function updateStatus(isLive, message) {
-            if (isLive) {
-                statusIndicator.className = 'status-indicator status-live';
+            const imageUrl = baseImageUrl + localidade + "/screen.png?random=" + new Date().getTime();
+            const img = new Image();
+            img.onload = function() {
+                screenImage.src = imageUrl;
+                screenImage.style.display = 'block';
                 messageDiv.style.display = 'none';
-                video.style.display = 'block';
-            } else {
-                statusIndicator.className = 'status-indicator status-offline';
+                startUpdatingScreen();
+                startCleanupTask();
+            };
+            img.onerror = function() {
+                screenImage.style.display = 'none';
                 messageDiv.style.display = 'block';
-                messageDiv.innerHTML = message || `
-                    <div style="text-align: center; padding: 20px;">
-                        <span class="loading"></span>
-                        <p style="margin-top: 10px;">Verificando transmissão...</p>
-                    </div>
-                `;
-                video.style.display = 'none';
+                messageDiv.textContent = "A transmissão não começou ainda.";
+            };
+            img.src = imageUrl;
+        }
+
+        function updateScreen() {
+            if (!localidade) return;
+
+            const imageUrl = baseImageUrl + localidade + "/screen.png?random=" + new Date().getTime();
+            screenImage.src = imageUrl; 
+        }
+
+        function startUpdatingScreen() {
+            if (!updateInterval) {
+                updateInterval = setInterval(updateScreen, 1000);
             }
         }
 
-        async function initHLS() {
-            if (!localidade && !sessionId) {
-                updateStatus(false, 'Localidade ou sessão não especificada.');
+        function startCleanupTask() {
+            if (!cleanupInterval) {
+                cleanupInterval = setInterval(() => {
+                    triggerCacheCleanup();
+                }, 30000); // 30 segundos
+            }
+        }
+
+        function stopCleanupTask() {
+            if (cleanupInterval) {
+                clearInterval(cleanupInterval);
+                cleanupInterval = null;
+            }
+        }
+
+        let lastCleanupTime = 0;
+        function triggerCacheCleanup() {
+            const now = Date.now();
+            if (now - lastCleanupTime < 5000) { // Throttle: mínimo 5 segundos entre limpezas
                 return;
             }
+            lastCleanupTime = now;
             
-            // Verificar se HLS URL está disponível antes de tentar carregar
-            try {
-                const response = await fetch(hlsUrl, { method: 'HEAD' });
-                if (!response.ok) {
-                    console.log('HLS não disponível ainda:', response.status);
-                    updateStatus(false, `
-                        <div class="info-box">
-                            <i class="fas fa-clock"></i>
-                            <h3 style="margin-bottom: 15px; color: #495057;">Aguardando transmissão</h3>
-                            <p style="color: #6c757d;">
-                                Nenhuma transmissão ativa para <strong>${localidade || 'esta localidade'}</strong> no momento.
-                            </p>
-                            <div class="loading"></div>
-                        </div>
-                    `);
-                    return;
-                }
-            } catch (error) {
-                console.log('Erro ao verificar disponibilidade HLS:', error);
-                updateStatus(false, `
-                    <div class="info-box">
-                        <i class="fas fa-broadcast-tower"></i>
-                        <h3 style="margin-bottom: 15px; color: #495057;">Nenhuma transmissão ativa</h3>
-                        <p style="color: #6c757d; margin-bottom: 15px;">
-                            Para visualizar a tela de <strong>${localidade || 'esta localidade'}</strong>, 
-                            alguém precisa estar compartilhando.
-                        </p>
-                        <p style="color: #868e96; font-size: 0.9em; margin-bottom: 20px;">
-                            <i class="fas fa-info-circle"></i> 
-                            Faça login e acesse a página de compartilhamento para iniciar a transmissão.
-                        </p>
-                        <a href="/" class="action-button">
-                            <i class="fas fa-rocket"></i> Iniciar Transmissão
-                        </a>
-                    </div>
-                `);
-                return;
-            }
-
-            console.log('Tentando carregar HLS URL:', hlsUrl);
-
-            if (Hls.isSupported()) {
-                // Destruir instância anterior se existir
-                if (hls) {
-                    hls.destroy();
-                }
-
-                hls = new Hls({
-                    // Configurações simplificadas e estáveis
-                    enableWorker: false,
-                    lowLatencyMode: false,  // Desabilitado para mais estabilidade
-                    backBufferLength: 60,   // Buffer maior para estabilidade
-                    maxBufferLength: 120,
-                    maxMaxBufferLength: 180,
-                    liveBackBufferLength: 60,
-                    liveSyncDurationCount: 5,
-                    liveMaxLatencyDurationCount: 15,
-                    maxLoadingDelay: 8,
-                    maxBufferHole: 2,
-                    highBufferWatchdogPeriod: 5,
-                    nudgeOffset: 0.5,
-                    nudgeMaxRetry: 2,
-                    maxFragLookUpTolerance: 1,
-                    liveDurationInfinity: true,
-                    debug: false
-                });
-
-                hls.loadSource(hlsUrl);
-                hls.attachMedia(video);
-
-                hls.on(Hls.Events.MEDIA_ATTACHED, () => {
-                    console.log('HLS: Mídia anexada');
-                });
-
-                hls.on(Hls.Events.MANIFEST_PARSED, (event, data) => {
-                    console.log('HLS: Manifest carregado, encontrados ' + data.levels.length + ' níveis de qualidade');
-                    updateStatus(true, 'Transmissão ativa');
-                    
-                    video.play().then(() => {
-                        console.log('Reprodução iniciada automaticamente');
-                    }).catch(e => {
-                        console.log('Autoplay bloqueado:', e);
-                        updateStatus(true, 'Clique no vídeo para reproduzir ao vivo');
-                    });
-                    retryCount = 0;
-                });
-
-                hls.on(Hls.Events.FRAG_LOADED, () => {
-                    // Verificar se precisa atualizar posição (menos agressivo)
-                    if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
-                        if (video.currentTime < video.duration - 15) {
-                            setTimeout(() => {
-                                video.currentTime = video.duration - 5;
-                            }, 100);
-                        }
-                    }
-                });
-
-                hls.on(Hls.Events.ERROR, (event, data) => {
-                    console.log('HLS Error:', data);
-                    
-                    // Se for erro 404, não é fatal - stream não está disponível
-                    if (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR) {
-                        console.log('Stream HLS não disponível (404) - aguardando...');
-                        updateStatus(false, `
-                            <div class="info-box">
-                                <i class="fas fa-broadcast-tower"></i>
-                                <h3 style="margin-bottom: 15px; color: #495057;">Aguardando transmissão</h3>
-                                <p style="color: #6c757d; margin-bottom: 15px;">
-                                    Verificando se há transmissão ativa para <strong>${localidade || 'esta localidade'}</strong>...
-                                </p>
-                                <div class="loading"></div>
-                            </div>
-                        `);
-                        return;
-                    }
-                    
-                    if (data.fatal) {
-                        switch (data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                console.log('Erro de rede HLS, tentando reconectar...');
-                                if (retryCount < maxRetries) {
-                                    retryCount++;
-                                    updateStatus(false, `Erro de rede, reconectando... (${retryCount}/${maxRetries})`);
-                                    setTimeout(() => {
-                                        hls.startLoad();
-                                    }, 2000);
-                                } else {
-                                    updateStatus(false, 'Transmissão não disponível no momento');
-                                    retryCount = 0;
-                                    // Tentar reinicializar após um tempo
-                                    setTimeout(initHLS, 10000);
-                                }
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                console.log('Erro de mídia HLS, tentando recuperar...');
-                                hls.recoverMediaError();
-                                break;
-                            default:
-                                updateStatus(false, 'Erro na transmissão, tentando novamente...');
-                                setTimeout(initHLS, 5000);
-                                break;
-                        }
-                    }
-                });
-
-                // Garantir que sempre reproduz em live (menos agressivo)
-                video.addEventListener('loadedmetadata', () => {
-                    setTimeout(() => {
-                        if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
-                            video.currentTime = Math.max(0, video.duration - 2);
-                        }
-                    }, 1000);
-                });
-
-                video.addEventListener('timeupdate', () => {
-                    // Se estiver muito atrás do live, pular para próximo do final (menos agressivo)
-                    if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
-                        if (video.currentTime < video.duration - 20) {
-                            video.currentTime = video.duration - 5;
-                        }
-                    }
-                });
-
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                // Safari nativo
-                video.src = hlsUrl;
-                video.addEventListener('loadedmetadata', () => {
-                    console.log('HLS nativo: Metadata carregada');
-                    updateStatus(true, 'Transmissão ativa');
-                    setTimeout(() => {
-                        if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
-                            video.currentTime = video.duration - 2;
-                        }
-                    }, 1000);
-                    video.play().catch(e => {
-                        console.log('Autoplay bloqueado:', e);
-                    });
-                });
-
-                video.addEventListener('error', (e) => {
-                    console.log('Erro no vídeo nativo:', e);
-                    updateStatus(false, 'Erro na transmissão');
-                });
-            } else {
-                updateStatus(false, 'HLS não é suportado neste navegador');
-            }
-        }
-
-        async function checkStreamStatus() {
-            try {
-                const response = await fetch(statusUrl);
-                const data = await response.json();
-                
-                if (data.active === true) {
-                    if (!hls) {
-                        console.log('Stream ativo detectado, iniciando HLS...');
-                        await initHLS();
-                    }
+            fetch("/trigger_cache_cleanup", {
+                method: "POST",
+            })
+            .then(response => {
+                if (response.ok) {
+                    console.log("[Frontend] Limpeza de cache acionada com sucesso.");
                 } else {
-                    if (hls) {
-                        hls.destroy();
-                        hls = null;
-                    }
-                    updateStatus(false, `
-                        <div class="info-box">
-                            <i class="fas fa-broadcast-tower"></i>
-                            <h3 style="margin-bottom: 15px; color: #495057;">Nenhuma transmissão ativa</h3>
-                            <p style="color: #6c757d; margin-bottom: 15px;">
-                                Para visualizar a tela de <strong>${localidade || 'esta localidade'}</strong>, 
-                                alguém precisa estar compartilhando.
-                            </p>
-                            <p style="color: #868e96; font-size: 0.9em; margin-bottom: 20px;">
-                                <i class="fas fa-info-circle"></i> 
-                                Faça login e acesse a página de compartilhamento para iniciar a transmissão.
-                            </p>
-                            <a href="/" class="action-button">
-                                <i class="fas fa-rocket"></i> Iniciar Transmissão
-                            </a>
-                        </div>
-                    `);
+                    console.error("[Frontend] Falha ao acionar a limpeza de cache.");
                 }
-            } catch (error) {
-                console.log('Erro ao verificar status:', error);
-                // Não inicializar HLS se não conseguir verificar status
-                if (hls) {
-                    hls.destroy();
-                    hls = null;
-                }
-                updateStatus(false, `
-                    <div class="info-box">
-                        <i class="fas fa-broadcast-tower"></i>
-                        <h3 style="margin-bottom: 15px; color: #495057;">Nenhuma transmissão ativa</h3>
-                        <p style="color: #6c757d; margin-bottom: 15px;">
-                            Para visualizar a tela de <strong>${localidade || 'esta localidade'}</strong>, 
-                            alguém precisa estar compartilhando.
-                        </p>
-                        <p style="color: #868e96; font-size: 0.9em; margin-bottom: 20px;">
-                            <i class="fas fa-info-circle"></i> 
-                            Faça login e acesse a página de compartilhamento para iniciar a transmissão.
-                        </p>
-                        <a href="/" class="action-button">
-                            <i class="fas fa-rocket"></i> Iniciar Transmissão
-                        </a>
-                    </div>
-                `);
-            }
+            })
+            .catch(error => {
+                console.error("[Frontend] Erro ao acionar a limpeza de cache:", error);
+            });
         }
 
-        // Inicializar
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM carregado, localidade:', localidade, 'sessionId:', sessionId);
-            
-            // Mostrar mensagem inicial
-            updateStatus(false, `
-                <div class="info-box">
-                    <i class="fas fa-search"></i>
-                    <h3 style="margin-bottom: 15px; color: #495057;">Verificando transmissão</h3>
-                    <p style="color: #6c757d;">Aguarde enquanto verificamos se há transmissão ativa...</p>
-                    <div class="loading"></div>
-                </div>
-            `);
-            
-            // Verificar status após um pequeno delay
-            setTimeout(() => {
-                checkStreamStatus();
-                // Verificar status periodicamente
-                checkInterval = setInterval(checkStreamStatus, 8000);
-            }, 1000);
-        });
-
-        // Cleanup ao sair da página
-        window.addEventListener('beforeunload', () => {
-            if (checkInterval) {
-                clearInterval(checkInterval);
-            }
-            if (hls) {
-                hls.destroy();
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                // Apenas retoma atualizações de tela, sem cleanup desnecessário
+                console.log("[Frontend] Página ficou visível - retomando atualizações");
+            } else {
+                stopCleanupTask();
+                console.log("[Frontend] Página ficou oculta - pausando limpeza");
             }
         });
 
-        // Lidar com visibilidade da página
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible' && !hls) {
-                checkStreamStatus();
-            }
-        });
+        document.addEventListener("DOMContentLoaded", checkForTransmission);
 
-        // Forçar live quando usuário clica no vídeo (com validação)
-        video.addEventListener('click', () => {
-            if (video.duration && !isNaN(video.duration) && isFinite(video.duration)) {
-                video.currentTime = video.duration - 2;
-                video.play();
-            }
+        window.addEventListener("beforeunload", () => {
+            stopCleanupTask();
         });
-
     </script>
 </body>
 </html>
