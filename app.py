@@ -36,6 +36,19 @@ from security_utils import (
 # Carregar variáveis do arquivo .env
 load_dotenv()
 
+def get_client_ip():
+    """Função para obter o IP real do cliente, tratando proxies"""
+    # Obter IP do header X-Forwarded-For (usado por proxies como Render)
+    forwarded_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+    
+    # Se há múltiplos IPs separados por vírgula, pegar apenas o primeiro (IP real do cliente)
+    if ',' in forwarded_ip:
+        client_ip = forwarded_ip.split(',')[0].strip()
+    else:
+        client_ip = forwarded_ip
+        
+    return client_ip
+
 app = Flask(__name__)
 # Usar chave secreta mais segura do .env
 app.secret_key = os.getenv("SECRET_KEY", "fallback_secret_key_change_in_production")
@@ -112,7 +125,7 @@ def security_middleware():
             update_session_activity(user_id, session_id)
     
     # Resto do middleware de segurança existente
-    client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.remote_addr)
+    client_ip = get_client_ip()
     
     # Rate limiting
     if rate_limiter.is_rate_limited(client_ip):
@@ -1209,7 +1222,7 @@ def cleanup_orphaned_hls_processes():
 @app.route("/login", methods=["POST"])
 def login():
     # Obter IP do cliente
-    client_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', 'unknown'))
+    client_ip = get_client_ip()
     
     # Verificar rate limiting
     if rate_limiter.is_rate_limited(client_ip):
@@ -2609,6 +2622,80 @@ def internal_server_error(e):
 @app.route('/setup-database-once', methods=['GET'])
 def setup_database_once():
     """Rota temporária para criar tabelas. Remover após uso."""
+    try:
+        # Versão simplificada que não tenta adicionar colunas duplicadas
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Criar tabelas principais
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                localidade VARCHAR(100) NOT NULL,
+                is_admin BOOLEAN DEFAULT FALSE,
+                is_active BOOLEAN DEFAULT TRUE,
+                plan_start DATE DEFAULT CURRENT_DATE,
+                plan_end DATE
+            );
+        """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS usage_events (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                localidade VARCHAR(100) NOT NULL,
+                event_type TEXT NOT NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+        """)
+        
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS active_sessions (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                session_id VARCHAR(255) UNIQUE NOT NULL,
+                ip_address TEXT,
+                user_agent TEXT,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                last_activity TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+        """)
+        
+        # Inserir usuários padrão se não existirem
+        cursor.execute("SELECT COUNT(*) FROM users")
+        user_count = cursor.fetchone()[0]
+        
+        if user_count == 0:
+            from werkzeug.security import generate_password_hash
+            cursor.execute("""
+                INSERT INTO users (username, password, localidade, is_admin, is_active)
+                VALUES 
+                ('admin', %s, 'admin', TRUE, TRUE),
+                ('curitiba_user', %s, 'curitiba', FALSE, TRUE),
+                ('sp_user', %s, 'sp', FALSE, TRUE)
+            """, (
+                generate_password_hash("admin"),
+                generate_password_hash("senha_curitiba"),
+                generate_password_hash("senha_sp")
+            ))
+        
+        conn.commit()
+        cursor.close()
+        conn.close()
+        
+        return f"""
+        <h1>✅ Database setup completed successfully!</h1>
+        <p>Tables created: users, usage_events, active_sessions</p>
+        <p>Default users created: admin, curitiba_user, sp_user</p>
+        <p><strong>IP address field fixed!</strong></p>
+        <hr>
+        <p><a href="/">Go to main page</a></p>
+        """, 200
+        
+    except Exception as e:
+        return f"<h1>❌ Database setup failed</h1><p>Error: {str(e)}</p>", 500
     try:
         # Versão simplificada que não tenta adicionar colunas duplicadas
         conn = get_db_connection()
