@@ -2616,5 +2616,9 @@ if __name__ == "__main__":
     # Inicia a tarefa de limpeza de frames antigos
     start_cleanup_task(interval=300, max_age_in_seconds=300)
     
+    # Obter porta do ambiente ou usar 5000 como padrão
+    port = int(os.environ.get('PORT', 5000))
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    
     # Inicia o servidor Flask
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)
