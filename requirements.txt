@@ -4,5 +4,11 @@ psycopg2-binary==2.9.10
 python-dotenv==1.0.1
 Werkzeug==3.0.4
 
-# Opcional: para desenvolvimento
+# Dependências de segurança
+bleach==6.1.0
+
+# Dependências para testes e monitoramento
+requests==2.31.0
+
+# Servidor de produção
 gunicorn==23.0.0
