@@ -13,7 +13,7 @@
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-      integrity="sha512-o8C1+z3JG+lkQcnmTcBZ6W3P/Au6Ck13i1M1t7gUtlhWmvsDr8d0Xk85X1QYRFvVfyqiwD5uEhAp4o7HLD+DQ=="
+      integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
@@ -234,6 +234,7 @@
       {% endif %} {% endwith %}
 
       <form method="POST" action="{{ url_for('add_new_user') }}" id="addUserForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="input-group">
           <label for="username">Nome de Usuário:</label>
           <input

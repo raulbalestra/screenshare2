@@ -13,7 +13,7 @@
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
-      integrity="sha512-t5R+Kvzml0eFq9X7+VGFhrJ1j9J0d4n+nQpXh1LLnB5/ZTvjqIhaLxV9F0R2Iqz63mDq6k59KX4R2p10iqA2Gw=="
+      integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
       crossorigin="anonymous"
       referrerpolicy="no-referrer"
     />
@@ -354,6 +354,7 @@
                 method="POST"
                 style="display: inline"
               >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                 <button type="submit" class="button block-btn">
                   <i class="fas fa-ban"></i> Bloquear
                 </button>
@@ -364,6 +365,7 @@
                 method="POST"
                 style="display: inline"
               >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                 <button type="submit" class="button unblock-btn">
                   <i class="fas fa-check-circle"></i> Desbloquear
                 </button>
@@ -375,6 +377,7 @@
                 style="display: inline"
                 onsubmit="return confirm('Tem certeza que deseja excluir este usuário?');"
               >
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}" />
                 <button type="submit" class="button delete-btn">
                   <i class="fas fa-trash"></i> Excluir
                 </button>

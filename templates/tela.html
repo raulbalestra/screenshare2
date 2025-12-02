@@ -7,7 +7,7 @@
     <!-- Importando uma fonte moderna do Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
     <!-- Importando Font Awesome para ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- HLS.js para suporte HLS -->
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
@@ -68,6 +68,26 @@
                 width: 100vw;
                 border-radius: 0;
             }
+            
+            .action-button {
+                padding: 14px 24px;
+                font-size: 1rem;
+                min-width: 180px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .action-button {
+                padding: 12px 20px;
+                font-size: 0.95rem;
+                min-width: 160px;
+                margin: 15px 10px;
+            }
+            
+            .info-box {
+                padding: 20px 15px;
+                margin: 15px 10px;
+            }
         }
 
         /* Estilos para a mensagem de espera */
@@ -119,8 +139,117 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Botão de ação */
+        .action-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            margin-top: 20px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            letter-spacing: 0.5px;
+            box-shadow: 
+                0 8px 32px rgba(102, 126, 234, 0.4),
+                0 4px 16px rgba(118, 75, 162, 0.3);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            min-width: 200px;
+        }
+
+        .action-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .action-button:hover::before {
+            left: 100%;
+        }
+
+        .action-button:hover {
+            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+            text-decoration: none;
+            color: white;
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 
+                0 12px 40px rgba(102, 126, 234, 0.6),
+                0 8px 24px rgba(118, 75, 162, 0.4),
+                0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .action-button:active {
+            transform: translateY(-1px) scale(1.01);
+            box-shadow: 
+                0 6px 20px rgba(102, 126, 234, 0.4),
+                0 4px 12px rgba(118, 75, 162, 0.3);
+        }
+
+        .action-button .fas {
+            font-size: 1.2rem;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+            transition: transform 0.3s ease;
+        }
+
+        .action-button:hover .fas {
+            transform: scale(1.1);
+        }
+
+        /* Efeito de pulso para chamar atenção */
+        .action-button {
+            animation: pulse-glow 3s ease-in-out infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { 
+                box-shadow: 
+                    0 8px 32px rgba(102, 126, 234, 0.4),
+                    0 4px 16px rgba(118, 75, 162, 0.3);
+            }
+            50% { 
+                box-shadow: 
+                    0 8px 32px rgba(102, 126, 234, 0.6),
+                    0 4px 16px rgba(118, 75, 162, 0.5);
+            }
+        }
+
+        .action-button:hover {
+            animation: none;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 20px 0;
+            text-align: center;
+            color: #212529;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-box .fas {
+            font-size: 2.5em;
+            color: #007bff;
+            margin-bottom: 15px;
+            display: block;
         }
 
     </style>
@@ -172,14 +301,58 @@
             } else {
                 statusIndicator.className = 'status-indicator status-offline';
                 messageDiv.style.display = 'block';
-                messageDiv.innerHTML = message || '<span class="loading"></span>Aguardando transmissão...';
+                messageDiv.innerHTML = message || `
+                    <div style="text-align: center; padding: 20px;">
+                        <span class="loading"></span>
+                        <p style="margin-top: 10px;">Verificando transmissão...</p>
+                    </div>
+                `;
                 video.style.display = 'none';
             }
         }
 
-        function initHLS() {
+        async function initHLS() {
             if (!localidade && !sessionId) {
                 updateStatus(false, 'Localidade ou sessão não especificada.');
+                return;
+            }
+            
+            // Verificar se HLS URL está disponível antes de tentar carregar
+            try {
+                const response = await fetch(hlsUrl, { method: 'HEAD' });
+                if (!response.ok) {
+                    console.log('HLS não disponível ainda:', response.status);
+                    updateStatus(false, `
+                        <div class="info-box">
+                            <i class="fas fa-clock"></i>
+                            <h3 style="margin-bottom: 15px; color: #495057;">Aguardando transmissão</h3>
+                            <p style="color: #6c757d;">
+                                Nenhuma transmissão ativa para <strong>${localidade || 'esta localidade'}</strong> no momento.
+                            </p>
+                            <div class="loading"></div>
+                        </div>
+                    `);
+                    return;
+                }
+            } catch (error) {
+                console.log('Erro ao verificar disponibilidade HLS:', error);
+                updateStatus(false, `
+                    <div class="info-box">
+                        <i class="fas fa-broadcast-tower"></i>
+                        <h3 style="margin-bottom: 15px; color: #495057;">Nenhuma transmissão ativa</h3>
+                        <p style="color: #6c757d; margin-bottom: 15px;">
+                            Para visualizar a tela de <strong>${localidade || 'esta localidade'}</strong>, 
+                            alguém precisa estar compartilhando.
+                        </p>
+                        <p style="color: #868e96; font-size: 0.9em; margin-bottom: 20px;">
+                            <i class="fas fa-info-circle"></i> 
+                            Faça login e acesse a página de compartilhamento para iniciar a transmissão.
+                        </p>
+                        <a href="/" class="action-button">
+                            <i class="fas fa-rocket"></i> Iniciar Transmissão
+                        </a>
+                    </div>
+                `);
                 return;
             }
 
@@ -244,6 +417,22 @@
 
                 hls.on(Hls.Events.ERROR, (event, data) => {
                     console.log('HLS Error:', data);
+                    
+                    // Se for erro 404, não é fatal - stream não está disponível
+                    if (data.details === Hls.ErrorDetails.MANIFEST_LOAD_ERROR) {
+                        console.log('Stream HLS não disponível (404) - aguardando...');
+                        updateStatus(false, `
+                            <div class="info-box">
+                                <i class="fas fa-broadcast-tower"></i>
+                                <h3 style="margin-bottom: 15px; color: #495057;">Aguardando transmissão</h3>
+                                <p style="color: #6c757d; margin-bottom: 15px;">
+                                    Verificando se há transmissão ativa para <strong>${localidade || 'esta localidade'}</strong>...
+                                </p>
+                                <div class="loading"></div>
+                            </div>
+                        `);
+                        return;
+                    }
                     
                     if (data.fatal) {
                         switch (data.type) {
@@ -317,41 +506,86 @@
             }
         }
 
-        function checkStreamStatus() {
-            fetch(statusUrl)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.active === true) {
-                        if (!hls) {
-                            console.log('Stream ativo detectado, iniciando HLS...');
-                            initHLS();
-                        }
-                    } else {
-                        if (hls) {
-                            hls.destroy();
-                            hls = null;
-                        }
-                        updateStatus(false, 'Aguardando início da transmissão...');
-                    }
-                })
-                .catch(error => {
-                    console.log('Erro ao verificar status:', error);
-                    // Tentar inicializar HLS mesmo com erro de status
+        async function checkStreamStatus() {
+            try {
+                const response = await fetch(statusUrl);
+                const data = await response.json();
+                
+                if (data.active === true) {
                     if (!hls) {
-                        initHLS();
+                        console.log('Stream ativo detectado, iniciando HLS...');
+                        await initHLS();
                     }
-                });
+                } else {
+                    if (hls) {
+                        hls.destroy();
+                        hls = null;
+                    }
+                    updateStatus(false, `
+                        <div class="info-box">
+                            <i class="fas fa-broadcast-tower"></i>
+                            <h3 style="margin-bottom: 15px; color: #495057;">Nenhuma transmissão ativa</h3>
+                            <p style="color: #6c757d; margin-bottom: 15px;">
+                                Para visualizar a tela de <strong>${localidade || 'esta localidade'}</strong>, 
+                                alguém precisa estar compartilhando.
+                            </p>
+                            <p style="color: #868e96; font-size: 0.9em; margin-bottom: 20px;">
+                                <i class="fas fa-info-circle"></i> 
+                                Faça login e acesse a página de compartilhamento para iniciar a transmissão.
+                            </p>
+                            <a href="/" class="action-button">
+                                <i class="fas fa-rocket"></i> Iniciar Transmissão
+                            </a>
+                        </div>
+                    `);
+                }
+            } catch (error) {
+                console.log('Erro ao verificar status:', error);
+                // Não inicializar HLS se não conseguir verificar status
+                if (hls) {
+                    hls.destroy();
+                    hls = null;
+                }
+                updateStatus(false, `
+                    <div class="info-box">
+                        <i class="fas fa-broadcast-tower"></i>
+                        <h3 style="margin-bottom: 15px; color: #495057;">Nenhuma transmissão ativa</h3>
+                        <p style="color: #6c757d; margin-bottom: 15px;">
+                            Para visualizar a tela de <strong>${localidade || 'esta localidade'}</strong>, 
+                            alguém precisa estar compartilhando.
+                        </p>
+                        <p style="color: #868e96; font-size: 0.9em; margin-bottom: 20px;">
+                            <i class="fas fa-info-circle"></i> 
+                            Faça login e acesse a página de compartilhamento para iniciar a transmissão.
+                        </p>
+                        <a href="/" class="action-button">
+                            <i class="fas fa-rocket"></i> Iniciar Transmissão
+                        </a>
+                    </div>
+                `);
+            }
         }
 
         // Inicializar
         document.addEventListener('DOMContentLoaded', () => {
             console.log('DOM carregado, localidade:', localidade, 'sessionId:', sessionId);
             
-            // Verificar status imediatamente
-            checkStreamStatus();
+            // Mostrar mensagem inicial
+            updateStatus(false, `
+                <div class="info-box">
+                    <i class="fas fa-search"></i>
+                    <h3 style="margin-bottom: 15px; color: #495057;">Verificando transmissão</h3>
+                    <p style="color: #6c757d;">Aguarde enquanto verificamos se há transmissão ativa...</p>
+                    <div class="loading"></div>
+                </div>
+            `);
             
-            // Verificar status periodicamente
-            checkInterval = setInterval(checkStreamStatus, 5000);
+            // Verificar status após um pequeno delay
+            setTimeout(() => {
+                checkStreamStatus();
+                // Verificar status periodicamente
+                checkInterval = setInterval(checkStreamStatus, 8000);
+            }, 1000);
         });
 
         // Cleanup ao sair da página

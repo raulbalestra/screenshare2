@@ -47,21 +47,30 @@ class SecurityValidator:
     def validate_username(username):
         """
         Valida nome de usuário
-        - Apenas letras, números e underscore
+        - Permite letras, números, underscore e espaços (para nomes reais)
         - Tamanho entre 3 e 30 caracteres
+        - Não pode começar ou terminar com espaço
         """
         if not username or not isinstance(username, str):
             return False, "Nome de usuário é obrigatório"
         
-        if len(username) < 3 or len(username) > 30:
+        # Remover espaços extras no início e fim
+        username_cleaned = username.strip()
+        
+        if len(username_cleaned) < 3 or len(username_cleaned) > 30:
             return False, "Nome de usuário deve ter entre 3 e 30 caracteres"
         
-        if not re.match(r'^[a-zA-Z0-9_]+$', username):
-            return False, "Nome de usuário pode conter apenas letras, números e underscore"
+        # Permitir letras, números, underscore, espaços e alguns caracteres especiais comuns em nomes
+        if not re.match(r'^[a-zA-ZÀ-ÿ0-9_\s\-\.]+$', username_cleaned):
+            return False, "Nome de usuário pode conter apenas letras, números, underscore, espaços e hífens"
         
-        # Verificar se não é uma palavra reservada (exceto admin que é usuário válido)
+        # Não permitir múltiplos espaços consecutivos
+        if re.search(r'\s{2,}', username_cleaned):
+            return False, "Nome de usuário não pode ter espaços consecutivos"
+        
+        # Verificar se não é uma palavra reservada
         reserved_words = ['root', 'system', 'null', 'undefined', 'select', 'insert', 'update', 'delete']
-        if username.lower() in reserved_words:
+        if username_cleaned.lower() in reserved_words:
             return False, "Nome de usuário não permitido"
         
         return True, "Válido"
@@ -100,22 +109,35 @@ class SecurityValidator:
     def validate_localidade(localidade):
         """
         Valida localidade
-        - Apenas letras, números e underscore
-        - Tamanho entre 2 e 20 caracteres
+        - Permite letras, números, underscore, hífen e espaços (para nomes compostos)
+        - Tamanho entre 2 e 30 caracteres
+        - Permite qualquer nome de cidade/região válido
         """
         if not localidade or not isinstance(localidade, str):
             return False, "Localidade é obrigatória"
         
-        if len(localidade) < 2 or len(localidade) > 20:
-            return False, "Localidade deve ter entre 2 e 20 caracteres"
+        # Remover espaços extras no início e fim
+        localidade_cleaned = localidade.strip()
         
-        if not re.match(r'^[a-zA-Z0-9_]+$', localidade):
-            return False, "Localidade pode conter apenas letras, números e underscore"
+        if len(localidade_cleaned) < 2 or len(localidade_cleaned) > 30:
+            return False, "Localidade deve ter entre 2 e 30 caracteres"
         
-        # Lista de localidades permitidas
-        allowed_locations = ['curitiba', 'sp', 'admin', 'teste', 'demo']
-        if localidade.lower() not in allowed_locations:
-            return False, "Localidade não autorizada"
+        # Permite letras (incluindo acentos), números, underscore, hífen e espaços
+        if not re.match(r'^[a-zA-ZÀ-ÿ0-9_\-\s]+$', localidade_cleaned):
+            return False, "Localidade pode conter apenas letras, números, underscore, hífen e espaços"
+        
+        # Não permitir múltiplos espaços consecutivos
+        if re.search(r'\s{2,}', localidade_cleaned):
+            return False, "Localidade não pode ter espaços consecutivos"
+        
+        # Não permitir apenas números ou caracteres especiais
+        if re.match(r'^[0-9_\-\s]+$', localidade_cleaned):
+            return False, "Localidade deve conter pelo menos uma letra"
+        
+        # Bloquear palavras que podem ser problemáticas para URLs (exceto admin que é válido)
+        blocked_words = ['api', 'root', 'system', 'null', 'undefined', 'script', 'javascript']
+        if localidade_cleaned.lower() in blocked_words:
+            return False, "Nome de localidade não permitido"
         
         return True, "Válido"
     
@@ -165,10 +187,16 @@ class SecurityValidator:
         # Limitar tamanho
         input_string = input_string[:max_length]
         
+        # Trim espaços extras
+        input_string = input_string.strip()
+        
+        # Normalizar espaços múltiplos para um só
+        input_string = re.sub(r'\s+', ' ', input_string)
+        
         # Escapar HTML
         input_string = html.escape(input_string)
         
-        # Usar bleach para limpeza adicional
+        # Usar bleach para limpeza adicional (preservando espaços)
         input_string = bleach.clean(input_string, tags=[], attributes={}, strip=True)
         
         return input_string.strip()
@@ -199,18 +227,27 @@ class SecurityValidator:
         """
         Valida dados de sessão para prevenir session hijacking
         """
-        required_fields = ['username', 'localidade', 'logged_in']
+        required_fields = ['username', 'logged_in']
         
         for field in required_fields:
             if field not in session_data:
                 return False, f"Campo obrigatório missing: {field}"
         
-        # Validar username e localidade novamente
+        # Validar username
         username_valid, _ = SecurityValidator.validate_username(session_data.get('username', ''))
-        localidade_valid, _ = SecurityValidator.validate_localidade(session_data.get('localidade', ''))
+        if not username_valid:
+            return False, "Username de sessão inválido"
         
-        if not username_valid or not localidade_valid:
-            return False, "Dados de sessão inválidos"
+        # Para usuários admin, localidade pode ser opcional
+        is_admin = session_data.get('is_admin', False)
+        if not is_admin and 'localidade' in session_data:
+            # Só validar localidade se não for admin e se localidade estiver presente
+            localidade_valid, _ = SecurityValidator.validate_localidade(session_data.get('localidade', ''))
+            if not localidade_valid:
+                return False, "Localidade de sessão inválida"
+        elif not is_admin and 'localidade' not in session_data:
+            # Usuários não-admin devem ter localidade
+            return False, "Localidade obrigatória para usuários não-admin"
         
         return True, "Válido"
 
@@ -325,7 +362,12 @@ def secure_db_operation(func):
             return func(*args, **kwargs)
         except Exception as e:
             # Log do erro sem expor detalhes sensíveis
-            security_logger.error(f"Erro em operação DB: {func.__name__} - {type(e).__name__}")
+            security_logger.error(f"Erro em operação DB: {func.__name__} - {type(e).__name__}: {str(e)[:100]}")
+            # Re-raise Flask abort exceptions (como 403, 400) para que sejam tratadas corretamente
+            from werkzeug.exceptions import HTTPException
+            if isinstance(e, HTTPException):
+                raise e
+            # Para outros erros, usar mensagem genérica
             raise Exception("Erro interno do sistema")
     
     return wrapper

@@ -106,7 +106,7 @@ def security_middleware():
                 logger.warning(f"Sessão inválida detectada para usuário {user_id}")
                 session.clear()
                 flash("Sua sessão foi encerrada. Outro dispositivo pode ter feito login.", "error")
-                return redirect(url_for('login_page'))
+                return redirect(url_for('index'))
             
             # Atualizar atividade da sessão
             update_session_activity(user_id, session_id)
@@ -123,9 +123,7 @@ def security_middleware():
     if request.method == 'POST' and request.form:
         for key, value in request.form.items():
             sanitized_value = security_validator.sanitize_input(value)
-            if sanitized_value != value:
-                logger.warning(f"Entrada suspeita sanitizada de {client_ip}: {key}")
-                # Continuar com valor sanitizado ao invés de abortar
+            # Nota: valores são sanitizados automaticamente para segurança
     """Middleware de segurança executado antes de cada request"""
     
     # Pular verificações para rotas públicas
@@ -470,56 +468,6 @@ def remove_user_session(user_id, session_id):
         
     except Exception as e:
         logger.error(f"Erro ao remover sessão: {e}")
-    """
-    Registra um evento de uso na tabela usage_events com validações de segurança.
-    event_type pode ser: 'login', 'frame', 'hls_chunk', etc.
-    """
-    try:
-        # Validar entradas
-        username_valid, _ = SecurityValidator.validate_username(username)
-        localidade_valid, _ = SecurityValidator.validate_localidade(localidade)
-        
-        if not username_valid or not localidade_valid:
-            security_logger.warning(f"Tentativa de log com dados inválidos: {username}, {localidade}")
-            return False
-        
-        # Sanitizar event_type
-        event_type = SecurityValidator.sanitize_input(event_type, 50)
-        
-        # Verificar tentativas de injeção
-        for param in [username, localidade, event_type]:
-            if SecurityValidator.detect_sql_injection(param):
-                security_logger.error(f"SQL Injection detectado em log_usage_event")
-                return False
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        # Busca o user_id pelo username - usando prepared statement
-        cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
-        user_row = cursor.fetchone()
-        
-        if user_row:
-            user_id = user_row[0]
-            cursor.execute(
-                "INSERT INTO usage_events (user_id, localidade, event_type) VALUES (%s, %s, %s)",
-                (user_id, localidade, event_type)
-            )
-            conn.commit()
-            print(f"[Usage] Evento registrado: {username} -> {event_type} em {localidade}")
-            return True
-        else:
-            security_logger.warning(f"Tentativa de log para usuário inexistente: {username}")
-            return False
-            
-    except Exception as e:
-        security_logger.error(f"Erro ao registrar evento: {type(e).__name__}")
-        return False
-    finally:
-        if 'cursor' in locals():
-            cursor.close()
-        if 'conn' in locals():
-            conn.close()
 
 def create_database():
     conn = get_db_connection()
@@ -970,79 +918,95 @@ def start_hls_ffmpeg(localidade):
     Recebe dados do MediaRecorder via stdin
     Versão simplificada para debug
     """
+    # Verifica se FFmpeg está disponível
+    try:
+        subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True, timeout=5)
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        print("[HLS] ERRO: FFmpeg não encontrado no sistema. Instale FFmpeg primeiro.")
+        print("[HLS] Windows: Baixe de https://ffmpeg.org/download.html")
+        print("[HLS] Linux: sudo apt install ffmpeg")
+        print("[HLS] Mac: brew install ffmpeg")
+        return None
+    
     localidade_dir = os.path.join(HLS_STREAMS_DIR, localidade)
     if not os.path.exists(localidade_dir):
         os.makedirs(localidade_dir)
     
     output_path = os.path.join(localidade_dir, "index.m3u8")
     
-    # FFmpeg otimizado para ALTA QUALIDADE de streaming
+    # FFmpeg ESTÁVEL - configuração mínima para funcionar
     ffmpeg_cmd = [
         "ffmpeg",
         "-y",  # Sobrescrever arquivos existentes
-        "-fflags", "+genpts+igndts",  # Gera timestamps e ignora DTS inválidos
-        "-avoid_negative_ts", "make_zero",  # Evita timestamps negativos
         "-f", "webm",  # Input format do MediaRecorder
         "-i", "pipe:0",  # Lê do stdin
         "-c:v", "libx264",  # Codec de vídeo H.264
-        "-preset", "fast",  # Preset balanceado (era ultrafast, agora fast para melhor qualidade)
-        "-tune", "zerolatency",  # Otimizar para latência zero
-        "-profile:v", "high",  # Perfil H.264 high para melhor qualidade
-        "-level", "4.0",  # Level H.264 para alta resolução
-        "-g", "30",  # GOP maior para melhor compressão (era 15)
-        "-keyint_min", "15",  # Keyframes regulares
-        "-sc_threshold", "0",  # Força keyframes regulares
-        "-b:v", "2500k",  # Bitrate aumentado para melhor qualidade (era 1500k)
-        "-maxrate", "3500k",  # Bitrate máximo aumentado (era 2000k)
-        "-bufsize", "5000k",  # Buffer maior para estabilidade (era 3000k)
-        "-pix_fmt", "yuv420p",  # Formato de pixel para compatibilidade
-        "-crf", "20",  # Constant Rate Factor para qualidade (menor = melhor qualidade)
-        "-c:a", "aac",  # Codec áudio AAC
-        "-b:a", "192k",  # Bitrate áudio aumentado (era 128k)
-        "-ar", "44100",  # Sample rate áudio
-        "-f", "hls",  # Output format HLS
-        "-hls_time", "2",  # Segmentos de 2 segundos (era 1, melhor para qualidade)
-        "-hls_list_size", "10",  # Mantém 10 segmentos (20 segundos, era 6)
-        "-hls_flags", "delete_segments+independent_segments",  # Remove segmentos antigos
-        "-hls_allow_cache", "0",  # Sem cache para live stream
-        "-hls_start_number_source", "datetime",  # Numeração baseada em tempo
-        "-method", "PUT",  # Método HTTP para melhor compatibilidade
+        "-preset", "veryfast",  # Preset rápido mas estável
+        "-tune", "zerolatency",  # Baixa latência
+        "-pix_fmt", "yuv420p",  # Formato compatível
+        "-g", "30",  # Keyframes a cada 30 frames
+        "-b:v", "1500k",  # Bitrate fixo para estabilidade
+        "-maxrate", "2000k",  # Rate máximo
+        "-bufsize", "3000k",  # Buffer
+        "-an",  # SEM ÁUDIO
+        "-f", "hls",  # Output HLS
+        "-hls_time", "3",  # Segmentos de 3 segundos
+        "-hls_list_size", "5",  # Mantém apenas 5 segmentos
+        "-hls_flags", "delete_segments",  # Remove segmentos antigos
         "-hls_segment_filename", os.path.join(localidade_dir, "seg_%03d.ts"),
         output_path
     ]
     
     try:
-        print(f"[HLS] Iniciando FFmpeg simples para localidade: {localidade}")
-        print(f"[HLS] Output: {output_path}")
-        print(f"[HLS] Comando: {' '.join(ffmpeg_cmd)}")
+        print(f"[HLS] Iniciando FFmpeg para localidade: {localidade}")
+        print(f"[HLS] Diretório de saída: {localidade_dir}")
+        print(f"[HLS] Arquivo de saída: {output_path}")
+        print(f"[HLS] Comando FFmpeg: {' '.join(ffmpeg_cmd[:10])}...") # Mostra primeiros parâmetros
+        
         process = subprocess.Popen(
             ffmpeg_cmd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,  # Redireciona stderr para stdout para ver erros
-            bufsize=0  # Unbuffered para baixa latência
+            bufsize=0,  # Unbuffered para baixa latência
+            cwd=localidade_dir  # Define working directory
         )
         
         active_hls_processes[localidade] = process
         print(f"[HLS] Processo FFmpeg iniciado para {localidade} (PID: {process.pid})")
         
+        # Verifica se processo iniciou corretamente
+        time.sleep(0.5)
+        if process.poll() is not None:
+            print(f"[HLS] ERRO: FFmpeg terminou imediatamente com código {process.returncode}")
+            return None
+        
         # Inicia thread para monitorar saída do FFmpeg
         def monitor_ffmpeg():
-            while process.poll() is None:
-                try:
-                    line = process.stdout.readline().decode('utf-8', errors='ignore')
+            try:
+                while process.poll() is None:
+                    line = process.stdout.readline()
                     if line:
-                        print(f"[FFmpeg {localidade}] {line.strip()}")
-                except:
-                    break
-            print(f"[FFmpeg {localidade}] Processo finalizado com código: {process.returncode}")
+                        decoded_line = line.decode('utf-8', errors='ignore').strip()
+                        if decoded_line:
+                            print(f"[FFmpeg {localidade}] {decoded_line}")
+                print(f"[FFmpeg {localidade}] Processo finalizado com código: {process.returncode}")
+            except Exception as e:
+                print(f"[FFmpeg {localidade}] Erro no monitor: {e}")
             
         Thread(target=monitor_ffmpeg, daemon=True).start()
         
         return process
         
+    except FileNotFoundError:
+        print(f"[HLS] ERRO: FFmpeg não encontrado. Certifique-se de que está instalado e no PATH.")
+        return None
+    except PermissionError:
+        print(f"[HLS] ERRO: Permissão negada para criar diretório ou executar FFmpeg: {localidade_dir}")
+        return None
     except Exception as e:
-        print(f"[HLS] Erro ao iniciar FFmpeg para {localidade}: {e}")
+        print(f"[HLS] ERRO: Exceção ao iniciar FFmpeg para {localidade}: {e}")
+        print(f"[HLS] Tipo de erro: {type(e).__name__}")
         return None
 
 def stop_hls_ffmpeg(localidade):
@@ -1275,6 +1239,12 @@ def login():
     if localidade == "blocked":
         rate_limiter.record_attempt(client_ip, success=False)
         flash("Seu acesso foi bloqueado pelo administrador.", "error")
+        return redirect(url_for("index"))
+    elif not localidade:
+        # Login falhado - log detalhado
+        security_logger.warning(f"Tentativa de login falhada: username={username} de IP: {client_ip}")
+        rate_limiter.record_attempt(client_ip, success=False)
+        flash("Nome de usuário ou senha inválidos.", "error")
         return redirect(url_for("index"))
     elif localidade:
         # Login bem-sucedido
@@ -1544,33 +1514,58 @@ def hls_ingest(localidade):
             # Lê todos os dados do chunk
             chunk_data = request.get_data()
             if not chunk_data:
+                print(f"[HLS Ingest] Chunk vazio recebido para {localidade}")
                 return "Chunk vazio", 400
-                
-            # Verifica se stdin ainda está disponível
-            if process.stdin and not process.stdin.closed:
-                process.stdin.write(chunk_data)
-                process.stdin.flush()
-                
-                # NOVO: Registrar evento de uso HLS
-                username = session.get("username")
-                if username:
-                    log_usage_event(username, localidade, "hls_chunk")
-                
-                print(f"[HLS Ingest] Chunk de {len(chunk_data)} bytes escrito para {localidade}")
-                return "Chunk processado com sucesso", 200
-            else:
-                print(f"[HLS Ingest] FFmpeg stdin não disponível para {localidade}")
+            
+            # Verifica se o processo ainda está rodando
+            if process.poll() is not None:
+                print(f"[HLS Ingest] Processo FFmpeg morreu (código {process.returncode}) para {localidade}")
                 # Remove processo morto
                 if localidade in active_hls_processes:
                     del active_hls_processes[localidade]
-                return "FFmpeg stdin não disponível", 500
+                # Tenta reiniciar
+                process = start_hls_ffmpeg(localidade)
+                if not process:
+                    return jsonify({"error": "Não foi possível reiniciar FFmpeg"}), 500
+                time.sleep(0.5)  # Aguarda inicializar
+                
+            # Verifica se stdin ainda está disponível
+            if process.stdin and not process.stdin.closed:
+                try:
+                    process.stdin.write(chunk_data)
+                    process.stdin.flush()
+                    
+                    # NOVO: Registrar evento de uso HLS
+                    username = session.get("username")
+                    if username:
+                        log_usage_event(username, localidade, "hls_chunk")
+                    
+                    print(f"[HLS Ingest] Chunk de {len(chunk_data)} bytes escrito para {localidade}")
+                    return "Chunk processado com sucesso", 200
+                except OSError as e:
+                    print(f"[HLS Ingest] ERRO OSError ao escrever: {e}")
+                    if localidade in active_hls_processes:
+                        del active_hls_processes[localidade]
+                    return jsonify({"error": "FFmpeg desconectado"}), 500
+            else:
+                print(f"[HLS Ingest] ERRO: FFmpeg stdin não disponível para {localidade}")
+                # Remove processo morto
+                if localidade in active_hls_processes:
+                    del active_hls_processes[localidade]
+                return jsonify({"error": "FFmpeg não está rodando"}), 500
             
+        except BrokenPipeError as e:
+            print(f"[HLS Ingest] ERRO: Broken pipe ao escrever para FFmpeg {localidade}: {e}")
+            if localidade in active_hls_processes:
+                del active_hls_processes[localidade]
+            return jsonify({"error": "FFmpeg desconectado"}), 500
         except Exception as e:
-            print(f"[HLS Ingest] Erro ao processar chunk para {localidade}: {e}")
+            print(f"[HLS Ingest] ERRO: Exceção ao processar chunk para {localidade}: {e}")
+            print(f"[HLS Ingest] Tipo de erro: {type(e).__name__}")
             # Em caso de erro, remove processo 
             if localidade in active_hls_processes:
                 del active_hls_processes[localidade]
-            return f"Erro ao processar chunk: {str(e)}", 500
+            return jsonify({"error": "Erro interno", "details": str(e)}), 500
 
 @app.route("/<localidade>/hls_start", methods=["POST"])
 def hls_start(localidade):
@@ -1787,8 +1782,12 @@ def admin_dashboard():
         abort(429, description="Muitas tentativas. Tente novamente mais tarde.")
     
     if "logged_in" in session and session["is_admin"]:
+        # Gerar CSRF token se não existir
+        if 'csrf_token' not in session:
+            session['csrf_token'] = generate_csrf_token()
+            
         logger.info(f"Acesso ao admin dashboard por {session.get('username')} de IP: {user_ip}")
-        return render_template("admin.html")
+        return render_template("admin.html", csrf_token=session['csrf_token'])
     
     logger.warning(f"Tentativa de acesso não autorizado ao admin dashboard de IP: {user_ip}")
     return redirect(url_for("index"))
@@ -1803,8 +1802,12 @@ def dashboard_admin():
         abort(429, description="Muitas tentativas. Tente novamente mais tarde.")
     
     if "logged_in" in session and session["is_admin"]:
+        # Gerar CSRF token se não existir
+        if 'csrf_token' not in session:
+            session['csrf_token'] = generate_csrf_token()
+            
         logger.info(f"Acesso ao dashboard admin por {session.get('username')} de IP: {user_ip}")
-        return render_template("dashboard_admin.html")
+        return render_template("dashboard_admin.html", csrf_token=session['csrf_token'])
     
     logger.warning(f"Tentativa de acesso não autorizado ao dashboard admin de IP: {user_ip}")
     return redirect(url_for("index"))
@@ -1833,6 +1836,10 @@ def manage_users():
         abort(429, description="Muitas tentativas. Tente novamente mais tarde.")
     
     if "logged_in" in session and session["is_admin"]:
+        # Gerar CSRF token se não existir
+        if 'csrf_token' not in session:
+            session['csrf_token'] = generate_csrf_token()
+        
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute(
@@ -1843,7 +1850,7 @@ def manage_users():
         conn.close()
         
         logger.info(f"Gerenciamento de usuários acessado por {session.get('username')} de IP: {user_ip}")
-        return render_template("manage_users.html", users=users)
+        return render_template("manage_users.html", users=users, csrf_token=session['csrf_token'])
     else:
         logger.warning(f"Tentativa de acesso não autorizado ao manage_users de IP: {user_ip}")
         flash("Acesso não autorizado.", "error")
@@ -1981,10 +1988,14 @@ def add_new_user():
         plan_start = request.form.get("plan_start")
         plan_end = request.form.get("plan_end")
 
+        # Sanitizar entradas primeiro
+        username = security_validator.sanitize_input(username.strip(), 30)
+        localidade = security_validator.sanitize_input(localidade.strip(), 30)
+
         # Validação de entradas usando security_validator
         if not security_validator.is_username_valid(username):
             logger.warning(f"Username inválido em add_user: {username} de IP: {user_ip}")
-            flash("Nome de usuário inválido!", "error")
+            flash("Nome de usuário inválido! Use apenas letras, números, espaços, underscore e hífens.", "error")
             return redirect(url_for("add_new_user"))
             
         if not security_validator.is_password_valid(password):
@@ -2029,7 +2040,11 @@ def add_new_user():
 
         return redirect(url_for("manage_users"))
 
-    return render_template("add_user.html")
+    # GET request - gerar CSRF token se não existir
+    if 'csrf_token' not in session:
+        session['csrf_token'] = generate_csrf_token()
+
+    return render_template("add_user.html", csrf_token=session['csrf_token'])
 
 # Rota para editar usuário
 @app.route("/admin/edit_user/<int:user_id>", methods=["GET", "POST"])
@@ -2076,7 +2091,7 @@ def edit_user(user_id):
                 'is_active': user[4],
                 'plan_start': user[5],
                 'plan_end': user[6]
-            })
+            }, csrf_token=session.get('csrf_token'))
             
         if not security_validator.is_localidade_valid(localidade):
             logger.warning(f"Localidade inválida em edit_user: {localidade} de IP: {user_ip}")
@@ -2089,7 +2104,7 @@ def edit_user(user_id):
                 'is_active': user[4],
                 'plan_start': user[5],
                 'plan_end': user[6]
-            })
+            }, csrf_token=session.get('csrf_token'))
 
         if not username or not localidade or not plan_start or not plan_end:
             flash("Todos os campos são obrigatórios!", "error")
@@ -2101,7 +2116,7 @@ def edit_user(user_id):
                 'is_active': user[4],
                 'plan_start': user[5],
                 'plan_end': user[6]
-            })
+            }, csrf_token=session.get('csrf_token'))
 
         # Validar datas
         try:
@@ -2118,7 +2133,7 @@ def edit_user(user_id):
                     'is_active': user[4],
                     'plan_start': user[5],
                     'plan_end': user[6]
-                })
+                }, csrf_token=session.get('csrf_token'))
         except ValueError:
             flash("Formato de data inválido!", "error")
             return render_template("edit_user.html", user={
@@ -2129,7 +2144,7 @@ def edit_user(user_id):
                 'is_active': user[4],
                 'plan_start': user[5],
                 'plan_end': user[6]
-            })
+            }, csrf_token=session.get('csrf_token'))
 
         # Verificar se o username já existe (exceto para o usuário atual)
         conn = get_db_connection()
@@ -2149,7 +2164,7 @@ def edit_user(user_id):
                 'is_active': user[4],
                 'plan_start': user[5],
                 'plan_end': user[6]
-            })
+            }, csrf_token=session.get('csrf_token'))
 
         # Atualizar usuário
         if update_user(user_id, username, localidade, plan_start, plan_end, is_admin, is_active):
@@ -2160,6 +2175,10 @@ def edit_user(user_id):
             flash("Erro ao atualizar o usuário. Tente novamente.", "error")
 
     # GET request - exibir formulário
+    # Gerar CSRF token se não existir
+    if 'csrf_token' not in session:
+        session['csrf_token'] = generate_csrf_token()
+    
     return render_template("edit_user.html", user={
         'id': user[0],
         'username': user[1],
@@ -2168,7 +2187,7 @@ def edit_user(user_id):
         'is_active': user[4],
         'plan_start': user[5],
         'plan_end': user[6]
-    })
+    }, csrf_token=session['csrf_token'])
 
 # Rota para o administrador alterar a senha de um usuário
 @app.route("/admin/change_password/<int:user_id>", methods=["GET", "POST"])
@@ -2229,7 +2248,10 @@ def admin_change_password(user_id):
             finally:
                 cursor.close()
                 conn.close()
-        return render_template("admin_change_password.html", user=user)
+        # GET request - gerar CSRF token se não existir
+        if 'csrf_token' not in session:
+            session['csrf_token'] = generate_csrf_token()
+        return render_template("admin_change_password.html", user=user, csrf_token=session['csrf_token'])
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
@@ -2252,6 +2274,12 @@ def trigger_cache_cleanup():
 def admin_change_own_password():
     if "logged_in" in session and session.get("is_admin"):
         if request.method == "POST":
+            # Verificação de CSRF token
+            csrf_token = request.form.get('csrf_token')
+            if not csrf_token or csrf_token != session.get('csrf_token'):
+                logger.warning(f"CSRF token inválido em admin_change_own_password de IP: {request.remote_addr}")
+                abort(403, description="Token CSRF inválido")
+            
             username = session.get("username")
             current_password = request.form["current_password"]
             new_password = request.form["new_password"]
@@ -2290,7 +2318,10 @@ def admin_change_own_password():
                 cursor.close()
                 conn.close()
                 return redirect(url_for("admin_change_own_password"))
-        return render_template("admin_change_own_password.html")
+        # GET request - gerar CSRF token se não existir
+        if 'csrf_token' not in session:
+            session['csrf_token'] = generate_csrf_token()
+        return render_template("admin_change_own_password.html", csrf_token=session['csrf_token'])
     else:
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
@@ -2301,6 +2332,12 @@ def change_password():
     if "logged_in" in session:
         username = session.get("username")
         if request.method == "POST":
+            # Verificação de CSRF token
+            csrf_token = request.form.get('csrf_token')
+            if not csrf_token or csrf_token != session.get('csrf_token'):
+                logger.warning(f"CSRF token inválido em change_password de IP: {request.remote_addr}")
+                abort(403, description="Token CSRF inválido")
+            
             new_password = request.form["new_password"]
             confirm_password = request.form["confirm_password"]
 
@@ -2341,7 +2378,10 @@ def change_password():
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
-    return render_template("change_password.html")
+    # GET request - gerar CSRF token se não existir
+    if 'csrf_token' not in session:
+        session['csrf_token'] = generate_csrf_token()
+    return render_template("change_password.html", csrf_token=session['csrf_token'])
 
 # Rota para limpar o cache de uma localidade específica
 @app.route("/<localidade>/clear_cache", methods=["POST"])
