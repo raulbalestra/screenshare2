@@ -155,7 +155,7 @@ def security_middleware():
             return redirect(url_for("index"))
         
         # Verificar IP da sessão (prevenção de session hijacking)
-        current_ip = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR', 'unknown'))
+        current_ip = get_client_ip()
         session_ip = session.get('login_ip')
         
         if session_ip and session_ip != current_ip:
