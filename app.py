@@ -2605,6 +2605,16 @@ def page_not_found(e):
 def internal_server_error(e):
     return render_template("500.html"), 500
 
+# Rota temporária para setup do banco de dados
+@app.route('/setup-database-once', methods=['GET'])
+def setup_database_once():
+    """Rota temporária para criar tabelas. Remover após uso."""
+    try:
+        create_database()
+        return "<h1>✅ Database setup completed successfully!</h1><p>Tables created. You can now remove this route.</p>", 200
+    except Exception as e:
+        return f"<h1>❌ Database setup failed</h1><p>Error: {str(e)}</p>", 500
+
 # Inicializar o banco de dados antes de servir qualquer rota
 # COMENTADO PARA PRODUÇÃO - evita problemas durante deploy no Render
 # create_database()
