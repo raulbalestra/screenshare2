@@ -114,8 +114,9 @@ def security_middleware():
     cleanup_inactive_sessions()
     
     # Verificar se é uma rota protegida que requer sessão válida
+    # NOTA: 'tela' e 'serve_pil_image' devem ser públicas para permitir visualização
     protected_routes = [
-        'upload_frame', 'serve_pil_image', 'tela', 'tela_compartilhada',
+        'upload_frame', 'tela_compartilhada',
         'hls_ingest', 'hls_start', 'hls_stop', 'hls_status'
     ]
     
@@ -1458,9 +1459,13 @@ def serve_pil_image(localidade):
     
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
     if not os.path.isdir(local_dir):
-        logger.warning(f"Pasta da localidade não encontrada: {local_dir} de IP: {user_ip}")
-        print(f"Pasta da localidade não encontrada: {local_dir}")
-        abort(404, description="Localidade não encontrada.")
+        # Criar o diretório automaticamente se não existir
+        try:
+            os.makedirs(local_dir)
+            logger.info(f"Diretório de localidade criado: {local_dir}")
+        except Exception as e:
+            logger.error(f"Erro ao criar diretório {local_dir}: {str(e)}")
+            abort(500, description="Erro ao criar diretório da localidade.")
 
     image_path = os.path.join(local_dir, "screen.png")
     if not os.path.isfile(image_path):
@@ -2087,9 +2092,10 @@ def add_new_user():
             flash("Senha deve ter pelo menos 8 caracteres, incluindo letras, números e símbolos!", "error")
             return redirect(url_for("add_new_user"))
             
-        if not security_validator.is_localidade_valid(localidade):
+        # Validação básica de localidade (formato válido)
+        if not localidade or len(localidade) < 2:
             logger.warning(f"Localidade inválida em add_user: {localidade} de IP: {user_ip}")
-            flash("Localidade inválida!", "error")
+            flash("Localidade deve ter pelo menos 2 caracteres!", "error")
             return redirect(url_for("add_new_user"))
 
         if not username or not password or not localidade or not plan_start or not plan_end:
@@ -2177,9 +2183,10 @@ def edit_user(user_id):
                 'plan_end': user[6]
             }, csrf_token=session.get('csrf_token'))
             
-        if not security_validator.is_localidade_valid(localidade):
+        # Validação básica de localidade (formato válido)
+        if not localidade or len(localidade.strip()) < 2:
             logger.warning(f"Localidade inválida em edit_user: {localidade} de IP: {user_ip}")
-            flash("Localidade inválida!", "error")
+            flash("Localidade deve ter pelo menos 2 caracteres!", "error")
             return render_template("edit_user.html", user={
                 'id': user_id,
                 'username': user[1],
