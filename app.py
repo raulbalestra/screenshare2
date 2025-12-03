@@ -1343,11 +1343,11 @@ def upload_frame(localidade):
     
     # Validação de entrada para localidade
     if not security_validator.is_localidade_valid(localidade):
-        logger.warning(f"Upload frame - localidade inválida: {localidade} de IP: {request.remote_addr}")
+        logger.warning(f"Upload frame - localidade inválida: {localidade} de IP: {get_client_ip()}")
         abort(400, description="Localidade inválida")
     
     # Verificação de rate limiting
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     if not rate_limiter.is_allowed(f"upload_{user_ip}"):
         logger.warning(f"Rate limit exceeded para upload_frame de IP: {user_ip}")
         abort(429, description="Muitas tentativas. Tente novamente mais tarde.")
@@ -1425,11 +1425,11 @@ def upload_frame(localidade):
 def serve_pil_image(localidade):
     # Validação de entrada para localidade
     if not security_validator.is_localidade_valid(localidade):
-        logger.warning(f"Tentativa de acesso com localidade inválida: {localidade} de IP: {request.remote_addr}")
+        logger.warning(f"Tentativa de acesso com localidade inválida: {localidade} de IP: {get_client_ip()}")
         abort(400, description="Localidade inválida")
     
     # Rate limiting para prevenir abuso
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     if not rate_limiter.is_allowed(f"serve_image_{user_ip}"):
         logger.warning(f"Rate limit exceeded para serve_pil_image de IP: {user_ip}")
         abort(429, description="Muitas tentativas. Tente novamente mais tarde.")
@@ -1478,7 +1478,7 @@ def tela():
 def view_screen_by_region(localidade):
     # Validação de entrada para localidade
     if not security_validator.is_localidade_valid(localidade):
-        logger.warning(f"Tentativa de visualização com localidade inválida: {localidade} de IP: {request.remote_addr}")
+        logger.warning(f"Tentativa de visualização com localidade inválida: {localidade} de IP: {get_client_ip()}")
         abort(400, description="Localidade inválida")
     
     return render_template("tela.html", localidade=localidade)
@@ -1488,7 +1488,7 @@ def view_screen_by_region(localidade):
 def share_screen(localidade):
     # Validação de entrada para localidade
     if not security_validator.is_localidade_valid(localidade):
-        logger.warning(f"Tentativa de compartilhamento com localidade inválida: {localidade} de IP: {request.remote_addr}")
+        logger.warning(f"Tentativa de compartilhamento com localidade inválida: {localidade} de IP: {get_client_ip()}")
         abort(400, description="Localidade inválida")
     
     if "logged_in" in session and session.get("localidade") == localidade:
@@ -1522,7 +1522,7 @@ def share_screen(localidade):
         
         return response
     else:
-        logger.warning(f"Acesso não autorizado para compartilhamento - localidade: {localidade}, IP: {request.remote_addr}")
+        logger.warning(f"Acesso não autorizado para compartilhamento - localidade: {localidade}, IP: {get_client_ip()}")
         flash("Acesso não autorizado.", "error")
         return redirect(url_for("index"))
 
@@ -1538,11 +1538,11 @@ def hls_ingest(localidade):
     """
     # Validação de entrada para localidade
     if not security_validator.is_localidade_valid(localidade):
-        logger.warning(f"Tentativa de HLS ingest com localidade inválida: {localidade} de IP: {request.remote_addr}")
+        logger.warning(f"Tentativa de HLS ingest com localidade inválida: {localidade} de IP: {get_client_ip()}")
         abort(400, description="Localidade inválida")
     
     # Rate limiting para uploads de stream
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     if not rate_limiter.is_allowed(f"hls_ingest_{user_ip}"):
         logger.warning(f"Rate limit exceeded para hls_ingest de IP: {user_ip}")
         abort(429, description="Muitas tentativas. Tente novamente mais tarde.")
@@ -1838,7 +1838,7 @@ def index():
 @app.route("/admin_dashboard")
 def admin_dashboard():
     # Rate limiting para admin dashboard
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     if not rate_limiter.is_allowed(f"admin_dashboard_{user_ip}"):
         logger.warning(f"Rate limit exceeded para admin_dashboard de IP: {user_ip}")
         abort(429, description="Muitas tentativas. Tente novamente mais tarde.")
@@ -1858,7 +1858,7 @@ def admin_dashboard():
 @app.route("/dashboard_admin")
 def dashboard_admin():
     # Rate limiting para dashboard admin
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     if not rate_limiter.is_allowed(f"dashboard_admin_{user_ip}"):
         logger.warning(f"Rate limit exceeded para dashboard_admin de IP: {user_ip}")
         abort(429, description="Muitas tentativas. Tente novamente mais tarde.")
@@ -1878,7 +1878,7 @@ def dashboard_admin():
 @app.route("/admin/sessions")
 def sessions_monitor():
     """Monitoramento de sessões ativas para administradores"""
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     
     if "logged_in" in session and session["is_admin"]:
         logger.info(f"Acesso ao monitor de sessões por {session.get('username')} de IP: {user_ip}")
@@ -1892,7 +1892,7 @@ def sessions_monitor():
 @secure_db_operation
 def manage_users():
     # Rate limiting para manage users
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     if not rate_limiter.is_allowed(f"manage_users_{user_ip}"):
         logger.warning(f"Rate limit exceeded para manage_users de IP: {user_ip}")
         abort(429, description="Muitas tentativas. Tente novamente mais tarde.")
@@ -1924,10 +1924,10 @@ def manage_users():
 def delete_user(user_id):
     # Validação de entrada para user_id
     if not isinstance(user_id, int) or user_id <= 0:
-        logger.warning(f"user_id inválido para delete: {user_id} de IP: {request.remote_addr}")
+        logger.warning(f"user_id inválido para delete: {user_id} de IP: {get_client_ip()}")
         abort(400, description="ID de usuário inválido")
     
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     if "logged_in" in session and session["is_admin"]:
         # Verificação de CSRF token
         csrf_token = request.form.get('csrf_token')
@@ -1956,10 +1956,10 @@ def delete_user(user_id):
 def block_user(user_id):
     # Validação de entrada para user_id
     if not isinstance(user_id, int) or user_id <= 0:
-        logger.warning(f"user_id inválido para block: {user_id} de IP: {request.remote_addr}")
+        logger.warning(f"user_id inválido para block: {user_id} de IP: {get_client_ip()}")
         abort(400, description="ID de usuário inválido")
     
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     if "logged_in" in session and session["is_admin"]:
         # Verificação de CSRF token
         csrf_token = request.form.get('csrf_token')
@@ -1994,10 +1994,10 @@ def block_user(user_id):
 def unblock_user(user_id):
     # Validação de entrada para user_id
     if not isinstance(user_id, int) or user_id <= 0:
-        logger.warning(f"user_id inválido para unblock: {user_id} de IP: {request.remote_addr}")
+        logger.warning(f"user_id inválido para unblock: {user_id} de IP: {get_client_ip()}")
         abort(400, description="ID de usuário inválido")
     
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     if "logged_in" in session and session["is_admin"]:
         # Verificação de CSRF token
         csrf_token = request.form.get('csrf_token')
@@ -2029,7 +2029,7 @@ def unblock_user(user_id):
 @app.route("/admin/add_user", methods=["GET", "POST"])
 @secure_db_operation
 def add_new_user():
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     
     # Verificação de admin
     if not ("logged_in" in session and session["is_admin"]):
@@ -2113,7 +2113,7 @@ def add_new_user():
 @secure_db_operation
 def edit_user(user_id):
     """Página de edição de usuários exclusiva para administradores"""
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     
     # Verificação de admin
     if not ("logged_in" in session and session["is_admin"]):
@@ -2257,10 +2257,10 @@ def edit_user(user_id):
 def admin_change_password(user_id):
     # Validação de entrada para user_id
     if not isinstance(user_id, int) or user_id <= 0:
-        logger.warning(f"user_id inválido para change_password: {user_id} de IP: {request.remote_addr}")
+        logger.warning(f"user_id inválido para change_password: {user_id} de IP: {get_client_ip()}")
         abort(400, description="ID de usuário inválido")
     
-    user_ip = request.remote_addr
+    user_ip = get_client_ip()
     
     if "logged_in" in session and session.get("is_admin"):
         conn = get_db_connection()
@@ -2339,7 +2339,7 @@ def admin_change_own_password():
             # Verificação de CSRF token
             csrf_token = request.form.get('csrf_token')
             if not csrf_token or csrf_token != session.get('csrf_token'):
-                logger.warning(f"CSRF token inválido em admin_change_own_password de IP: {request.remote_addr}")
+                logger.warning(f"CSRF token inválido em admin_change_own_password de IP: {get_client_ip()}")
                 abort(403, description="Token CSRF inválido")
             
             username = session.get("username")
@@ -2397,7 +2397,7 @@ def change_password():
             # Verificação de CSRF token
             csrf_token = request.form.get('csrf_token')
             if not csrf_token or csrf_token != session.get('csrf_token'):
-                logger.warning(f"CSRF token inválido em change_password de IP: {request.remote_addr}")
+                logger.warning(f"CSRF token inválido em change_password de IP: {get_client_ip()}")
                 abort(403, description="Token CSRF inválido")
             
             new_password = request.form["new_password"]

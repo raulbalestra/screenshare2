@@ -216,6 +216,13 @@
                 return;
             }
 
+            // Verifica se a API está disponível
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+                alert("Seu navegador não suporta compartilhamento de tela ou a página não está em um contexto seguro (HTTPS/localhost). Por favor, acesse via HTTPS.");
+                console.error("navigator.mediaDevices.getDisplayMedia não está disponível. Verifique se a página está em HTTPS.");
+                return;
+            }
+
             try {
                 screenStream = await navigator.mediaDevices.getDisplayMedia({
                     video: true,
@@ -307,26 +314,6 @@
                 alert("Não foi possível copiar o link automaticamente. Por favor, copie manualmente.");
             });
         }
-
-        function startPing() {
-            return setInterval(() => {
-                if (!document.hasFocus()) {
-                    sendPing();
-                }
-            }, 1000); // Captura a cada 1 segundo
-        }
-
-        let pingInterval = startPing();
-
-        window.addEventListener('focus', () => {
-            clearInterval(pingInterval);
-            console.log("A aba está em foco. Pings pausados.");
-        });
-
-        window.addEventListener('blur', () => {
-            pingInterval = startPing();
-            console.log("A aba saiu de foco. Pings retomados.");
-        });
 
         // Função para manter o navegador "ativo" durante o compartilhamento de tela
         setInterval(() => {
