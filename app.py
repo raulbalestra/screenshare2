@@ -828,8 +828,18 @@ def get_status(localidade):
 # Função para garantir que a pasta da localidade exista
 def ensure_localidade_directory(localidade):
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
+    print(f"[ensure_localidade_directory] Verificando diretório: {local_dir}")
+    
     if not os.path.isdir(local_dir):
-        os.makedirs(local_dir)
+        try:
+            os.makedirs(local_dir, exist_ok=True)
+            print(f"[ensure_localidade_directory] ✓ Diretório criado: {local_dir}")
+        except Exception as e:
+            print(f"[ensure_localidade_directory] ✗ ERRO ao criar diretório {local_dir}: {e}")
+            raise
+    else:
+        print(f"[ensure_localidade_directory] ✓ Diretório já existe: {local_dir}")
+    
     return local_dir
 
 def ensure_sessions_directory():
@@ -1396,9 +1406,16 @@ def upload_frame(localidade):
                 return "", 204  # Retorna vazio sem atualizar
 
         # Define o diretório de salvamento da imagem
-        local_dir = ensure_localidade_directory(localidade)
+        try:
+            local_dir = ensure_localidade_directory(localidade)
+            print(f"[upload_frame] Diretório confirmado: {local_dir}")
+        except Exception as e:
+            logger.error(f"Erro ao criar diretório para {localidade}: {e}")
+            abort(500, description="Erro ao criar diretório de armazenamento")
+        
         frame_path_local = os.path.join(local_dir, "screen.png")
         frame_temp_path = os.path.join(local_dir, "screen_temp.png")
+        print(f"[upload_frame] frame_path_local: {frame_path_local}")
         
         if "frame" in request.files:
             frame = request.files["frame"]
