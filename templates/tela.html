@@ -70,6 +70,30 @@
             margin-top: 20px;
             font-size: 1.5em;
             color: #555;
+            text-align: center;
+            padding: 40px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            max-width: 600px;
+        }
+        
+        #message i {
+            font-size: 3em;
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            display: block;
+        }
+        
+        #message .waiting-text {
+            font-size: 1.2em;
+            margin-bottom: 15px;
+        }
+        
+        #message .instruction-text {
+            font-size: 0.9em;
+            color: #777;
+            line-height: 1.6;
         }
         
         /* Indicador de transmissão pausada */
@@ -100,8 +124,15 @@
 </head>
 <body>
     <h2>Painel de Filas - {{ localidade|capitalize }}</h2>
-    <img id="screen" src="" alt="Transmissão da Tela">
-    <div id="message">Aguardando o início da transmissão...</div>
+    <img id="screen" src="" alt="Transmissão da Tela" style="display: none;">
+    <div id="message">
+        <i class="fas fa-video-slash"></i>
+        <div class="waiting-text">Aguardando o início da transmissão...</div>
+        <div class="instruction-text">
+            A transmissão ainda não foi iniciada.<br>
+            Aguarde o operador iniciar o compartilhamento de tela.
+        </div>
+    </div>
     <div id="pausedIndicator">
         <i class="fas fa-pause-circle"></i>
         <div>Transmissão Pausada</div>
@@ -142,7 +173,14 @@
                 if (!lastSuccessfulImage) {
                     screenImage.style.display = 'none';
                     messageDiv.style.display = 'block';
-                    messageDiv.textContent = "A transmissão não começou ainda.";
+                    messageDiv.innerHTML = `
+                        <i class="fas fa-video-slash"></i>
+                        <div class="waiting-text">Nenhuma transmissão ativa</div>
+                        <div class="instruction-text">
+                            A transmissão ainda não foi iniciada para <strong>${localidade}</strong>.<br>
+                            Aguarde o operador iniciar o compartilhamento de tela.
+                        </div>
+                    `;
                 } else {
                     // Se já tinha imagem, mantém a última imagem válida
                     console.log("[Frontend] Mantendo última imagem válida");

@@ -78,6 +78,9 @@ IMAGE_DIR = os.path.join(BASE_DIR, "static", "images")
 SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
 HLS_STREAMS_DIR = os.path.join(BASE_DIR, "hls_streams")
 
+# Diretório de uploads (pode ser configurado via .env)
+UPLOAD_FOLDER = os.path.join(BASE_DIR, os.getenv("UPLOAD_FOLDER", "uploads"))
+
 # Dicionário para armazenar processos FFmpeg ativos por localidade
 active_hls_processes = {}
 
@@ -92,8 +95,10 @@ process_locks = {}
 last_upload_time = {}
 
 # Garantir que diretórios existam
-if not os.path.exists(HLS_STREAMS_DIR):
-    os.makedirs(HLS_STREAMS_DIR)
+for directory in [IMAGE_DIR, SESSIONS_DIR, HLS_STREAMS_DIR, UPLOAD_FOLDER]:
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        print(f"[INIT] Diretório criado: {directory}")
 
 # Middleware de segurança
 @app.before_request
