@@ -98,6 +98,10 @@ if not os.path.exists(HLS_STREAMS_DIR):
 # Middleware de segurança
 @app.before_request
 def security_middleware():
+    # Lidar com requisições OPTIONS (CORS preflight)
+    if request.method == 'OPTIONS':
+        return '', 204
+    
     # Verificar expiração de usuários automaticamente
     check_user_expiration()
     
@@ -155,14 +159,15 @@ def security_middleware():
             return redirect(url_for("index"))
         
         # Verificar IP da sessão (prevenção de session hijacking)
-        current_ip = get_client_ip()
-        session_ip = session.get('login_ip')
-        
-        if session_ip and session_ip != current_ip:
-            security_logger.warning(f"Mudança de IP detectada na sessão: {session.get('username')} - {session_ip} -> {current_ip}")
-            session.clear()
-            flash("Sessão expirada por motivos de segurança. Faça login novamente.", "error")
-            return redirect(url_for("index"))
+        # DESABILITADO: Causa problemas com proxies/CDN/HTTPS
+        # current_ip = get_client_ip()
+        # session_ip = session.get('login_ip')
+        # 
+        # if session_ip and session_ip != current_ip:
+        #     security_logger.warning(f"Mudança de IP detectada na sessão: {session.get('username')} - {session_ip} -> {current_ip}")
+        #     session.clear()
+        #     flash("Sessão expirada por motivos de segurança. Faça login novamente.", "error")
+        #     return redirect(url_for("index"))
 
 # Headers de segurança
 @app.after_request
@@ -170,8 +175,20 @@ def add_security_headers(response):
     """Adiciona headers de segurança a todas as respostas"""
     # Prevenir ataques XSS
     response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
+    
+    # CORS - Permitir origem do domínio
+    allowed_origins = os.getenv('ALLOWED_ORIGINS', 'https://screenshare.itfolkstech.com').split(',')
+    origin = request.headers.get('Origin')
+    if origin in allowed_origins:
+        response.headers['Access-Control-Allow-Origin'] = origin
+    else:
+        response.headers['Access-Control-Allow-Origin'] = allowed_origins[0]
+    
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
     
     # CSP básico (ajustar conforme necessário)
     response.headers['Content-Security-Policy'] = (
