@@ -71,6 +71,30 @@
             font-size: 1.5em;
             color: #555;
         }
+        
+        /* Indicador de transmissão pausada */
+        #pausedIndicator {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 15px;
+            font-size: 1.2em;
+            z-index: 1000;
+            display: none;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        #pausedIndicator i {
+            display: block;
+            font-size: 2em;
+            margin-bottom: 10px;
+            color: #ffc107;
+        }
 
     </style>
 </head>
@@ -78,15 +102,23 @@
     <h2>Painel de Filas - {{ localidade|capitalize }}</h2>
     <img id="screen" src="" alt="Transmissão da Tela">
     <div id="message">Aguardando o início da transmissão...</div>
+    <div id="pausedIndicator">
+        <i class="fas fa-pause-circle"></i>
+        <div>Transmissão Pausada</div>
+        <small style="font-size: 0.8em; opacity: 0.8;">Mostrando última imagem capturada</small>
+    </div>
 
     <script>
         const baseImageUrl = "/serve_pil_image/";
         const localidade = "{{ localidade|default('') }}";  
         const screenImage = document.getElementById('screen');
         const messageDiv = document.getElementById('message');
+        const pausedIndicator = document.getElementById('pausedIndicator');
 
         let updateInterval;
         let cleanupInterval;
+        let consecutiveErrors = 0;
+        let lastSuccessfulImage = null;
 
         function checkForTransmission() {
             if (!localidade) {
@@ -100,13 +132,21 @@
                 screenImage.src = imageUrl;
                 screenImage.style.display = 'block';
                 messageDiv.style.display = 'none';
+                lastSuccessfulImage = imageUrl;
+                consecutiveErrors = 0;
                 startUpdatingScreen();
                 startCleanupTask();
             };
             img.onerror = function() {
-                screenImage.style.display = 'none';
-                messageDiv.style.display = 'block';
-                messageDiv.textContent = "A transmissão não começou ainda.";
+                // Se nunca carregou nenhuma imagem, mostra mensagem
+                if (!lastSuccessfulImage) {
+                    screenImage.style.display = 'none';
+                    messageDiv.style.display = 'block';
+                    messageDiv.textContent = "A transmissão não começou ainda.";
+                } else {
+                    // Se já tinha imagem, mantém a última imagem válida
+                    console.log("[Frontend] Mantendo última imagem válida");
+                }
             };
             img.src = imageUrl;
         }
@@ -120,13 +160,39 @@
             const testImg = new Image();
             testImg.onload = function() {
                 screenImage.src = imageUrl;
+                lastSuccessfulImage = imageUrl;
+                consecutiveErrors = 0;
+                
+                // Se estava mostrando mensagem, esconde
+                if (messageDiv.style.display !== 'none') {
+                    messageDiv.style.display = 'none';
+                    screenImage.style.display = 'block';
+                }
+                
+                // Esconde indicador de pausado se estava visível
+                pausedIndicator.style.display = 'none';
             };
             testImg.onerror = function() {
-                console.warn("[Frontend] Erro ao carregar frame, tentando novamente em 2s...");
-                // Retry após 2 segundos em caso de erro
-                setTimeout(() => {
-                    screenImage.src = imageUrl;
-                }, 2000);
+                consecutiveErrors++;
+                console.warn(`[Frontend] Erro ao carregar frame (${consecutiveErrors} consecutivos)`);
+                
+                // Mantém a última imagem válida visível
+                if (lastSuccessfulImage) {
+                    // Não faz nada, mantém a imagem atual
+                    console.log("[Frontend] Mantendo última imagem válida após erro");
+                }
+                
+                // Se muitos erros consecutivos, mostra indicador de pausado
+                if (consecutiveErrors > 5 && lastSuccessfulImage) {
+                    pausedIndicator.style.display = 'block';
+                    
+                    // Auto-esconde após 3 segundos
+                    setTimeout(() => {
+                        if (consecutiveErrors > 5) {
+                            pausedIndicator.style.display = 'none';
+                        }
+                    }, 3000);
+                }
             };
             testImg.src = imageUrl;
         }
