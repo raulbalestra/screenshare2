@@ -78,6 +78,9 @@ IMAGE_DIR = os.path.join(BASE_DIR, "static", "images")
 SESSIONS_DIR = os.path.join(BASE_DIR, "sessions")
 HLS_STREAMS_DIR = os.path.join(BASE_DIR, "hls_streams")
 
+print(f"[INIT] BASE_DIR: {BASE_DIR}")
+print(f"[INIT] IMAGE_DIR: {IMAGE_DIR}")
+
 # Diretório de uploads (pode ser configurado via .env)
 UPLOAD_FOLDER = os.path.join(BASE_DIR, os.getenv("UPLOAD_FOLDER", "uploads"))
 
