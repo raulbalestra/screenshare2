@@ -1398,13 +1398,6 @@ def upload_frame(localidade):
             logger.warning(f"CSRF token inválido em upload_frame de IP: {user_ip}")
             abort(403, description="Token CSRF inválido")
         
-        # Verifica se o último upload ocorreu há pelo menos 'upload_interval' segundos
-        if localidade in last_upload_time:
-            elapsed_time = current_time - last_upload_time[localidade]
-            if elapsed_time < upload_interval:
-                print(f"Upload ignorado para {localidade}, intervalo de {upload_interval} segundos ainda não passou.")
-                return "", 204  # Retorna vazio sem atualizar
-
         # Define o diretório de salvamento da imagem
         try:
             local_dir = ensure_localidade_directory(localidade)
@@ -1416,6 +1409,20 @@ def upload_frame(localidade):
         frame_path_local = os.path.join(local_dir, "screen.png")
         frame_temp_path = os.path.join(local_dir, "screen_temp.png")
         print(f"[upload_frame] frame_path_local: {frame_path_local}")
+        
+        # IMPORTANTE: Se o arquivo não existe (foi deletado/limpo), resetar o timestamp
+        # Isso permite reiniciar transmissão imediatamente após parar
+        if not os.path.exists(frame_path_local):
+            if localidade in last_upload_time:
+                print(f"[upload_frame] Arquivo não existe - resetando timestamp para {localidade}")
+                del last_upload_time[localidade]
+        
+        # Verifica se o último upload ocorreu há pelo menos 'upload_interval' segundos
+        if localidade in last_upload_time:
+            elapsed_time = current_time - last_upload_time[localidade]
+            if elapsed_time < upload_interval:
+                print(f"Upload ignorado para {localidade}, intervalo de {upload_interval} segundos ainda não passou.")
+                return "", 204  # Retorna vazio sem atualizar
         
         if "frame" in request.files:
             frame = request.files["frame"]
