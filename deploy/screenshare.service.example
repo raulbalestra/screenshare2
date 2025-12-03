@@ -1,0 +1,50 @@
+# Configuração do Systemd Service para ScreenShare
+# Arquivo: /etc/systemd/system/screenshare.service
+
+[Unit]
+Description=ScreenShare Application - Sistema de Compartilhamento de Tela
+Documentation=https://screenshare.itfolkstech.com
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/opt/screenshare
+
+# Ambiente
+Environment="PATH=/opt/screenshare/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONUNBUFFERED=1"
+EnvironmentFile=/opt/screenshare/.env
+
+# Comando de inicialização
+ExecStart=/opt/screenshare/venv/bin/gunicorn \
+    --workers 4 \
+    --worker-class sync \
+    --bind 127.0.0.1:5000 \
+    --timeout 120 \
+    --keep-alive 5 \
+    --max-requests 1000 \
+    --max-requests-jitter 50 \
+    --access-logfile /var/log/screenshare/access.log \
+    --error-logfile /var/log/screenshare/error.log \
+    --log-level info \
+    app:app
+
+# Reinicialização automática
+Restart=always
+RestartSec=10
+StartLimitBurst=5
+StartLimitInterval=60
+
+# Limites de recursos
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# Segurança
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

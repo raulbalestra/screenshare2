@@ -1,0 +1,63 @@
+# Configuração Nginx para ScreenShare
+# Arquivo: /etc/nginx/sites-available/screenshare.itfolkstech.com
+# Link simbólico: /etc/nginx/sites-enabled/screenshare.itfolkstech.com
+
+server {
+    server_name screenshare.itfolkstech.com;
+
+    # Proxy para aplicação Flask
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        
+        # Headers para proxy reverso
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        
+        # Suporte para WebSocket
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_cache_bypass $http_upgrade;
+        
+        # Timeouts para WebSocket (24 horas)
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
+        proxy_connect_timeout 60;
+    }
+
+    # Configurações de segurança
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
+    # Desabilitar listagem de diretórios
+    autoindex off;
+
+    # Limite de tamanho de upload (16MB)
+    client_max_body_size 16M;
+
+    # SSL configurado pelo Certbot
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/screenshare.itfolkstech.com/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/screenshare.itfolkstech.com/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+
+    # Logs
+    access_log /var/log/nginx/screenshare_access.log;
+    error_log /var/log/nginx/screenshare_error.log;
+}
+
+# Redirecionar HTTP para HTTPS
+server {
+    if ($host = screenshare.itfolkstech.com) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    listen 80;
+    server_name screenshare.itfolkstech.com;
+    return 404; # managed by Certbot
+}
