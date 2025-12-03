@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>Dashboard - Screen Share</title>
     <link rel="icon" href="data:,">
     
@@ -498,12 +499,15 @@
             if (!user) return;
 
             try {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                 const endpoint = block ? `/admin/block_user/${userId}` : `/admin/unblock_user/${userId}`;
+                
+                const formData = new FormData();
+                formData.append('csrf_token', csrfToken);
+                
                 const response = await fetch(endpoint, { 
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    }
+                    body: formData
                 });
 
                 if (response.ok) {
@@ -517,9 +521,12 @@
                     
                     updateDashboard();
                 } else {
+                    const errorText = await response.text();
+                    console.error('Erro do servidor:', errorText);
                     showToast('Erro ao alterar status do usuário', 'error');
                 }
             } catch (error) {
+                console.error('Erro de conexão:', error);
                 showToast('Erro de conexão', 'error');
             }
         }

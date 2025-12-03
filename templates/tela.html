@@ -150,6 +150,8 @@
         let cleanupInterval;
         let consecutiveErrors = 0;
         let lastSuccessfulImage = null;
+        let lastSuccessfulTimestamp = null;
+        const MAX_IDLE_TIME = 10000; // 10 segundos sem atualização = transmissão parada
 
         function checkForTransmission() {
             if (!localidade) {
@@ -164,6 +166,7 @@
                 screenImage.style.display = 'block';
                 messageDiv.style.display = 'none';
                 lastSuccessfulImage = imageUrl;
+                lastSuccessfulTimestamp = Date.now();
                 consecutiveErrors = 0;
                 startUpdatingScreen();
                 startCleanupTask();
@@ -199,6 +202,7 @@
             testImg.onload = function() {
                 screenImage.src = imageUrl;
                 lastSuccessfulImage = imageUrl;
+                lastSuccessfulTimestamp = Date.now();
                 consecutiveErrors = 0;
                 
                 // Se estava mostrando mensagem, esconde
@@ -214,14 +218,28 @@
                 consecutiveErrors++;
                 console.warn(`[Frontend] Erro ao carregar frame (${consecutiveErrors} consecutivos)`);
                 
-                // Mantém a última imagem válida visível
-                if (lastSuccessfulImage) {
-                    // Não faz nada, mantém a imagem atual
-                    console.log("[Frontend] Mantendo última imagem válida após erro");
-                }
+                // Verificar se passou tempo demais sem atualização
+                const timeSinceLastUpdate = Date.now() - (lastSuccessfulTimestamp || 0);
                 
-                // Se muitos erros consecutivos, mostra indicador de pausado
-                if (consecutiveErrors > 5 && lastSuccessfulImage) {
+                if (timeSinceLastUpdate > MAX_IDLE_TIME) {
+                    // Transmissão foi parada - limpar tela
+                    console.log("[Frontend] Transmissão parada detectada - limpando tela");
+                    screenImage.style.display = 'none';
+                    messageDiv.style.display = 'block';
+                    messageDiv.innerHTML = `
+                        <i class="fas fa-stop-circle"></i>
+                        <div class="waiting-text">Transmissão encerrada</div>
+                        <div class="instruction-text">
+                            A transmissão de <strong>${localidade}</strong> foi finalizada.<br>
+                            Aguarde o operador iniciar uma nova transmissão.
+                        </div>
+                    `;
+                    pausedIndicator.style.display = 'none';
+                    lastSuccessfulImage = null;
+                    lastSuccessfulTimestamp = null;
+                    consecutiveErrors = 0;
+                } else if (consecutiveErrors > 5 && lastSuccessfulImage) {
+                    // Pequena pausa na transmissão - mostrar indicador temporário
                     pausedIndicator.style.display = 'block';
                     
                     // Auto-esconde após 3 segundos
