@@ -309,10 +309,13 @@
                             Aguarde o operador iniciar o compartilhamento de tela.
                         </div>
                     `;
-                } else {
-                    // Se já tinha imagem, mantém a última imagem válida
-                    console.log("[Frontend] Mantendo última imagem válida");
                 }
+                
+                // CORREÇÃO CRÍTICA: Inicia atualização mesmo sem transmissão ativa
+                // para continuar verificando quando a transmissão começar
+                console.log("[Frontend] Nenhuma transmissão detectada, continuando a verificar...");
+                startUpdatingScreen();
+                startCleanupTask();
             };
             img.src = imageUrl;
         }
