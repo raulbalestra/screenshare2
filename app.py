@@ -33,6 +33,9 @@ from security_utils import (
     generate_csrf_token
 )
 
+# Importar gerenciador Redis
+from redis_manager import init_redis_manager, get_redis_manager
+
 # Carregar variáveis do arquivo .env
 load_dotenv()
 
@@ -102,6 +105,14 @@ for directory in [IMAGE_DIR, SESSIONS_DIR, HLS_STREAMS_DIR, UPLOAD_FOLDER]:
     if not os.path.exists(directory):
         os.makedirs(directory)
         print(f"[INIT] Diretório criado: {directory}")
+
+# Inicializar Redis Manager
+print("[INIT] Inicializando Redis Manager...")
+redis_manager = init_redis_manager()
+if redis_manager and redis_manager.is_available():
+    print(f"[INIT] ✓ Redis conectado e pronto para uso")
+else:
+    print(f"[INIT] ⚠ Redis indisponível - sistema operará em modo fallback (disco)")
 
 # Middleware de segurança
 @app.before_request
@@ -1433,7 +1444,24 @@ def upload_frame(localidade):
                 abort(400, description="Arquivo de imagem inválido")
             
             try:
-                # Salva primeiro em arquivo temporário
+                username = session.get("username")
+                
+                # Ler dados binários do frame
+                frame_data = frame.read()
+                
+                # === ESTRATÉGIA HÍBRIDA: Redis + Disco ===
+                # 1. Tentar salvar no Redis primeiro (cache rápido)
+                redis_saved = False
+                if redis_manager and redis_manager.is_available():
+                    redis_saved = redis_manager.save_frame(localidade, frame_data, username)
+                    if redis_saved:
+                        # Também adicionar à fila para processamento futuro
+                        redis_manager.push_to_queue(localidade, frame_data)
+                        print(f"[upload_frame] ✓ Frame de {localidade} salvo no Redis")
+                
+                # 2. Salvar no disco como fallback/backup (sempre)
+                # Importante: manter disco para compatibilidade e backup
+                frame.seek(0)  # Voltar ao início do arquivo para salvar no disco
                 frame.save(frame_temp_path)
                 
                 # Renomeiação atômica (evita problemas de leitura durante escrita)
@@ -1441,16 +1469,16 @@ def upload_frame(localidade):
                     if os.path.exists(frame_path_local):
                         os.remove(frame_path_local)
                     os.rename(frame_temp_path, frame_path_local)
+                    print(f"[upload_frame] ✓ Frame de {localidade} salvo no disco")
                 
                 last_upload_time[localidade] = current_time  # Atualiza o tempo do último upload
                 
                 # NOVO: Registrar evento de uso do frame
-                username = session.get("username")
                 if username:
                     log_usage_event(username, localidade, "frame")
                 
-                logger.info(f"Frame salvo com sucesso para {localidade} por {username}")
-                print(f"Frame salvo com sucesso em {frame_path_local}.")
+                logger.info(f"Frame salvo para {localidade} por {username} (Redis: {redis_saved}, Disco: True)")
+                print(f"Frame salvo com sucesso em {frame_path_local}")
             except Exception as e:
                 # Limpar arquivo temporário em caso de erro
                 if os.path.exists(frame_temp_path):
@@ -1484,6 +1512,22 @@ def serve_pil_image(localidade):
         logger.warning(f"Rate limit exceeded para serve_pil_image de IP: {user_ip}")
         abort(429, description="Muitas tentativas. Tente novamente mais tarde.")
     
+    # === ESTRATÉGIA: Tentar Redis primeiro, depois disco ===
+    
+    # 1. Buscar do Redis (cache rápido)
+    if redis_manager and redis_manager.is_available():
+        frame_data = redis_manager.get_frame(localidade)
+        if frame_data:
+            from flask import Response
+            response = Response(frame_data, mimetype="image/png")
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+            response.headers["X-Frame-Source"] = "redis"
+            print(f"[serve_pil_image] ✓ Frame de {localidade} servido do Redis ({len(frame_data)} bytes)")
+            return response
+    
+    # 2. Fallback para disco se Redis não disponível ou frame não encontrado
     local_dir = os.path.join(IMAGE_DIR, localidade.lower())
     if not os.path.isdir(local_dir):
         # Criar o diretório automaticamente se não existir
@@ -1507,12 +1551,14 @@ def serve_pil_image(localidade):
             abort(404, description="Imagem não disponível no momento.")
             
         response = send_from_directory(local_dir, "screen.png", mimetype="image/png")
+        print(f"[serve_pil_image] ✓ Frame de {localidade} servido do disco ({file_size} bytes)")
         
         # Headers otimizados para evitar problemas de cache e concorrência
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
         response.headers["Last-Modified"] = "0"
+        response.headers["X-Frame-Source"] = "disk"
         response.headers["ETag"] = f"\"{file_size}-{int(time.time())}\""
         response.headers["Accept-Ranges"] = "none"  # Previne requests de range que podem causar problemas
         
@@ -2511,20 +2557,41 @@ def clear_cache(localidade):
     print(f"[clear_cache] Caminho do arquivo: {frame_path_local}")
     
     files_removed = []
+    redis_cleaned = False
+    
     try:
-        # Remove arquivo principal
+        # 1. Limpar Redis (frame e fila)
+        if redis_manager and redis_manager.is_available():
+            try:
+                # Deletar frame atual do Redis
+                redis_manager.delete_frame(localidade)
+                # Limpar fila de frames
+                redis_manager.clear_queue(localidade)
+                redis_cleaned = True
+                print(f"[clear_cache] ✓ Redis limpo para {localidade} (frame + fila)")
+            except Exception as redis_error:
+                print(f"[clear_cache] ⚠ Erro ao limpar Redis: {redis_error}")
+        
+        # 2. Remove arquivo principal do disco
         if os.path.exists(frame_path_local):
             os.remove(frame_path_local)
             files_removed.append("screen.png")
             
-        # Remove arquivo temporário se existir
+        # 3. Remove arquivo temporário se existir
         if os.path.exists(frame_temp_path):
             os.remove(frame_temp_path)
             files_removed.append("screen_temp.png")
             
-        if files_removed:
+        if files_removed or redis_cleaned:
+            message_parts = []
+            if files_removed:
+                message_parts.append(f"Arquivos disco: {', '.join(files_removed)}")
+            if redis_cleaned:
+                message_parts.append("Redis: frame + fila limpos")
+            
+            message = f"Cache limpo com sucesso. {' | '.join(message_parts)}"
             print(f"[clear_cache] Arquivos deletados com sucesso: {', '.join(files_removed)}")
-            return jsonify({"message": f"Cache limpo com sucesso. Arquivos removidos: {', '.join(files_removed)}"}), 200
+            return jsonify({"message": message}), 200
         else:
             print("[clear_cache] Nenhum arquivo encontrado.")
             return jsonify({"message": "Nenhum cache encontrado para a localidade especificada."}), 404
@@ -2826,6 +2893,85 @@ def setup_database_once():
         
     except Exception as e:
         return f"<h1>❌ Database setup failed</h1><p>Error: {str(e)}</p>", 500
+
+# ==============================
+# ROTAS DE MONITORAMENTO REDIS
+# ==============================
+
+@app.route("/admin/redis/stats")
+def redis_stats():
+    """Exibe estatísticas do Redis."""
+    if "logged_in" not in session or not session.get("is_admin"):
+        flash("Acesso negado. Apenas administradores.", "error")
+        return redirect(url_for("index"))
+    
+    if not redis_manager or not redis_manager.is_available():
+        return jsonify({
+            "status": "unavailable",
+            "message": "Redis não está disponível"
+        }), 503
+    
+    stats = redis_manager.get_stats()
+    return jsonify({
+        "status": "ok",
+        "stats": stats,
+        "timestamp": datetime.now().isoformat()
+    })
+
+@app.route("/admin/redis/queue/<localidade>")
+def redis_queue_info(localidade):
+    """Exibe informações da fila de uma localidade."""
+    if "logged_in" not in session or not session.get("is_admin"):
+        flash("Acesso negado. Apenas administradores.", "error")
+        return redirect(url_for("index"))
+    
+    if not redis_manager or not redis_manager.is_available():
+        return jsonify({
+            "status": "unavailable",
+            "message": "Redis não está disponível"
+        }), 503
+    
+    queue_size = redis_manager.get_queue_size(localidade)
+    metadata = redis_manager.get_frame_metadata(localidade)
+    
+    return jsonify({
+        "status": "ok",
+        "localidade": localidade,
+        "queue_size": queue_size,
+        "current_frame_metadata": metadata,
+        "timestamp": datetime.now().isoformat()
+    })
+
+@app.route("/admin/redis/clear_queue/<localidade>", methods=["POST"])
+def redis_clear_queue(localidade):
+    """Limpa a fila de uma localidade."""
+    if "logged_in" not in session or not session.get("is_admin"):
+        flash("Acesso negado. Apenas administradores.", "error")
+        return redirect(url_for("index"))
+    
+    # Validar CSRF
+    csrf_token = request.form.get('csrf_token')
+    if not csrf_token or csrf_token != session.get('csrf_token'):
+        return jsonify({"status": "error", "message": "Token CSRF inválido"}), 403
+    
+    if not redis_manager or not redis_manager.is_available():
+        return jsonify({
+            "status": "unavailable",
+            "message": "Redis não está disponível"
+        }), 503
+    
+    success = redis_manager.clear_queue(localidade)
+    
+    if success:
+        return jsonify({
+            "status": "ok",
+            "message": f"Fila de {localidade} limpa com sucesso"
+        })
+    else:
+        return jsonify({
+            "status": "error",
+            "message": "Erro ao limpar fila"
+        }), 500
 
 # Inicializar o banco de dados antes de servir qualquer rota
 # COMENTADO PARA PRODUÇÃO - evita problemas durante deploy no Render

@@ -4,6 +4,9 @@ psycopg2-binary==2.9.10
 python-dotenv==1.0.1
 Werkzeug==3.0.4
 
+# Redis para cache e sistema de fila
+redis==5.0.1
+
 # Dependências para testes e monitoramento
 requests==2.31.0
 
