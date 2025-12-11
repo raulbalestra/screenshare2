@@ -268,7 +268,15 @@
         let consecutiveErrors = 0;
         let lastSuccessfulImage = null;
         let lastSuccessfulTimestamp = null;
+        let isUpdating = false; // Previne requisições simultâneas
+        let updateDelay = 500; // Intervalo inicial: 500ms (mais rápido)
+        const MIN_UPDATE_DELAY = 300; // Mínimo: 300ms (3 FPS)
+        const MAX_UPDATE_DELAY = 2000; // Máximo: 2s quando há erros
         const MAX_IDLE_TIME = 10000; // 10 segundos sem atualização = transmissão parada
+        
+        // Performance: Cache de URLs para evitar recriação
+        const urlCache = new Map();
+        const MAX_CACHE_SIZE = 5;
 
         function checkForTransmission() {
             if (!localidade) {
@@ -310,17 +318,38 @@
         }
 
         function updateScreen() {
-            if (!localidade) return;
-
-            const imageUrl = baseImageUrl + localidade + "/screen.png?random=" + new Date().getTime();
+            if (!localidade || isUpdating) return;
             
-            // Criar uma nova imagem para verificar se carrega corretamente
+            isUpdating = true;
+            const imageUrl = baseImageUrl + localidade + "/screen.png?random=" + Date.now();
+            
+            // Criar nova imagem com timeout para evitar travamentos
             const testImg = new Image();
+            const loadTimeout = setTimeout(() => {
+                testImg.src = ''; // Cancela carregamento
+                handleError();
+            }, 3000); // Timeout de 3 segundos
+            
             testImg.onload = function() {
+                clearTimeout(loadTimeout);
+                
+                // Otimização: Usa cache de URLs
+                if (urlCache.size > MAX_CACHE_SIZE) {
+                    const firstKey = urlCache.keys().next().value;
+                    urlCache.delete(firstKey);
+                }
+                urlCache.set(imageUrl, true);
+                
                 screenImage.src = imageUrl;
                 lastSuccessfulImage = imageUrl;
                 lastSuccessfulTimestamp = Date.now();
                 consecutiveErrors = 0;
+                
+                // Adaptação dinâmica: Diminui delay quando está funcionando bem
+                if (updateDelay > MIN_UPDATE_DELAY) {
+                    updateDelay = Math.max(MIN_UPDATE_DELAY, updateDelay - 50);
+                    restartUpdating();
+                }
                 
                 // Se estava mostrando mensagem, esconde
                 if (messageDiv.style.display !== 'none') {
@@ -328,18 +357,26 @@
                     screenImage.style.display = 'block';
                 }
                 
-                // Esconde indicador de pausado se estava visível
                 pausedIndicator.style.display = 'none';
+                isUpdating = false;
             };
-            testImg.onerror = function() {
+            
+            testImg.onerror = handleError;
+            
+            function handleError() {
+                clearTimeout(loadTimeout);
                 consecutiveErrors++;
                 console.warn(`[Frontend] Erro ao carregar frame (${consecutiveErrors} consecutivos)`);
                 
-                // Verificar se passou tempo demais sem atualização
+                // Adaptação dinâmica: Aumenta delay quando há erros
+                if (consecutiveErrors > 2) {
+                    updateDelay = Math.min(MAX_UPDATE_DELAY, updateDelay + 200);
+                    restartUpdating();
+                }
+                
                 const timeSinceLastUpdate = Date.now() - (lastSuccessfulTimestamp || 0);
                 
                 if (timeSinceLastUpdate > MAX_IDLE_TIME) {
-                    // Transmissão foi parada - limpar tela
                     console.log("[Frontend] Transmissão parada detectada - limpando tela");
                     screenImage.style.display = 'none';
                     messageDiv.style.display = 'block';
@@ -355,32 +392,43 @@
                     lastSuccessfulImage = null;
                     lastSuccessfulTimestamp = null;
                     consecutiveErrors = 0;
+                    updateDelay = 500; // Reset delay
                 } else if (consecutiveErrors > 5 && lastSuccessfulImage) {
-                    // Pequena pausa na transmissão - mostrar indicador temporário
                     pausedIndicator.style.display = 'block';
-                    
-                    // Auto-esconde após 3 segundos
                     setTimeout(() => {
                         if (consecutiveErrors > 5) {
                             pausedIndicator.style.display = 'none';
                         }
                     }, 3000);
                 }
-            };
+                
+                isUpdating = false;
+            }
+            
             testImg.src = imageUrl;
         }
 
         function startUpdatingScreen() {
             if (!updateInterval) {
-                updateInterval = setInterval(updateScreen, 1000);
+                updateInterval = setInterval(updateScreen, updateDelay);
+                console.log(`[Frontend] Atualizações iniciadas com delay de ${updateDelay}ms`);
             }
+        }
+        
+        function restartUpdating() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+            startUpdatingScreen();
+            console.log(`[Frontend] Delay ajustado para ${updateDelay}ms`);
         }
 
         function startCleanupTask() {
             if (!cleanupInterval) {
                 cleanupInterval = setInterval(() => {
                     triggerCacheCleanup();
-                }, 30000); // 30 segundos
+                }, 60000); // 60 segundos (reduzido de 30s para diminuir carga)
             }
         }
 
@@ -394,7 +442,7 @@
         let lastCleanupTime = 0;
         function triggerCacheCleanup() {
             const now = Date.now();
-            if (now - lastCleanupTime < 5000) { // Throttle: mínimo 5 segundos entre limpezas
+            if (now - lastCleanupTime < 30000) { // Throttle: mínimo 30 segundos entre limpezas
                 return;
             }
             lastCleanupTime = now;
@@ -416,11 +464,21 @@
 
         document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") {
-                // Apenas retoma atualizações de tela, sem cleanup desnecessário
                 console.log("[Frontend] Página ficou visível - retomando atualizações");
+                // Reset de erros ao voltar para página
+                consecutiveErrors = 0;
+                updateDelay = 500;
+                if (!updateInterval) {
+                    startUpdatingScreen();
+                }
             } else {
+                console.log("[Frontend] Página ficou oculta - pausando atualizações");
+                // Para atualizações quando aba está oculta (economia de recursos)
+                if (updateInterval) {
+                    clearInterval(updateInterval);
+                    updateInterval = null;
+                }
                 stopCleanupTask();
-                console.log("[Frontend] Página ficou oculta - pausando limpeza");
             }
         });
 
