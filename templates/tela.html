@@ -35,47 +35,146 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-start;
             min-height: 100vh;
+            height: 100vh;
             color: var(--text-color);
             margin: 0;
+            padding: 0;
             overflow: hidden;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            left: 0;
         }
 
         h2 {
             color: var(--primary-color);
-            font-size: 1.5em;
+            font-size: 1.2em;
             text-align: center;
-            margin-bottom: 20px;
+            margin: 10px 0;
+            padding: 0 10px;
+            flex-shrink: 0;
+            width: 100%;
+        }
+
+        /* Container para a imagem */
+        .image-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
         }
 
         /* Estilos para a imagem da tela */
         #screen {
-            width: 95vw;
-            height: 95vh;
-            object-fit: contain; /* Cobre toda a área da tela sem distorção */
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            display: block;
         }
 
-
-        /* Responsividade */
-        @media (max-width: 768px) {
+        /* Responsividade Desktop */
+        @media (min-width: 769px) {
+            h2 {
+                font-size: 1.5em;
+                margin: 20px 0;
+            }
+            
             #screen {
-                height: 100vh;
-                object-fit: contain; /* Ajusta a imagem dentro da tela sem cortar */
+                max-width: 95%;
+                max-height: 95%;
+            }
+        }
+
+        /* Responsividade Mobile - Portrait */
+        @media (max-width: 768px) and (orientation: portrait) {
+            h2 {
+                font-size: 1em;
+                margin: 8px 0;
+                padding: 0 5px;
+            }
+            
+            body {
+                justify-content: flex-start;
+            }
+            
+            .image-container {
+                padding: 5px;
+            }
+        }
+
+        /* Responsividade Mobile - Landscape */
+        @media (max-width: 768px) and (orientation: landscape) {
+            h2 {
+                font-size: 0.9em;
+                margin: 5px 0;
+                padding: 0 5px;
+            }
+            
+            body {
+                justify-content: flex-start;
+            }
+            
+            .image-container {
+                padding: 2px;
+            }
+        }
+        
+        /* Para dispositivos muito pequenos */
+        @media (max-width: 480px) {
+            h2 {
+                font-size: 0.85em;
+                margin: 5px 0;
+            }
+        }
+        
+        /* Ajuste para barras de navegação mobile */
+        @supports (-webkit-touch-callout: none) {
+            body {
+                min-height: -webkit-fill-available;
+                height: -webkit-fill-available;
             }
         }
 
         /* Estilos para a mensagem de espera */
         #message {
-            margin-top: 20px;
-            font-size: 1.5em;
+            font-size: 1.2em;
             color: #555;
             text-align: center;
-            padding: 40px;
+            padding: 30px 20px;
             background: white;
             border-radius: 15px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            max-width: 600px;
+            max-width: 90%;
+            margin: auto;
+        }
+        
+        @media (max-width: 768px) {
+            #message {
+                font-size: 1em;
+                padding: 20px 15px;
+                max-width: 95%;
+            }
+            
+            #message i {
+                font-size: 2em !important;
+                margin-bottom: 15px !important;
+            }
+            
+            #message .waiting-text {
+                font-size: 1em !important;
+                margin-bottom: 10px !important;
+            }
+            
+            #message .instruction-text {
+                font-size: 0.85em !important;
+            }
         }
         
         #message i {
@@ -111,6 +210,7 @@
             display: none;
             text-align: center;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            max-width: 90%;
         }
         
         #pausedIndicator i {
@@ -119,18 +219,35 @@
             margin-bottom: 10px;
             color: #ffc107;
         }
+        
+        @media (max-width: 768px) {
+            #pausedIndicator {
+                font-size: 1em;
+                padding: 15px 25px;
+            }
+            
+            #pausedIndicator i {
+                font-size: 1.5em;
+            }
+            
+            #pausedIndicator small {
+                font-size: 0.75em !important;
+            }
+        }
 
     </style>
 </head>
 <body>
     <h2>Painel de Filas - {{ localidade|capitalize }}</h2>
-    <img id="screen" src="" alt="Transmissão da Tela" style="display: none;">
-    <div id="message">
-        <i class="fas fa-video-slash"></i>
-        <div class="waiting-text">Aguardando o início da transmissão...</div>
-        <div class="instruction-text">
-            A transmissão ainda não foi iniciada.<br>
-            Aguarde o operador iniciar o compartilhamento de tela.
+    <div class="image-container">
+        <img id="screen" src="" alt="Transmissão da Tela" style="display: none;">
+        <div id="message">
+            <i class="fas fa-video-slash"></i>
+            <div class="waiting-text">Aguardando o início da transmissão...</div>
+            <div class="instruction-text">
+                A transmissão ainda não foi iniciada.<br>
+                Aguarde o operador iniciar o compartilhamento de tela.
+            </div>
         </div>
     </div>
     <div id="pausedIndicator">
