@@ -25,7 +25,7 @@ mss==9.0.2
 openai==1.46.1
 packaging==24.1
 pillow==10.4.0
-psycopg2==2.9.9
+psycopg2-binary==2.9.9
 pydantic==2.9.2
 pydantic_core==2.23.4
 pyscreenshot==3.1
